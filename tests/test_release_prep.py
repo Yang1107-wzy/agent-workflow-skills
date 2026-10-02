@@ -119,6 +119,18 @@ class ReleasePrepTests(unittest.TestCase):
                 self.write("CHANGELOG.md", content + "\n## [1.2.3]\nActual section.\n")
                 self.assertTrue(self.data(self.cli())["changelog"]["matched"])
 
+    def test_atx_changelog_headings_accept_zero_to_three_leading_spaces(self):
+        for spaces in range(4):
+            with self.subTest(spaces=spaces):
+                self.write("CHANGELOG.md", " " * spaces + "## [1.2.3]\nSynthetic section.\n")
+                changelog = self.data(self.cli())["changelog"]
+                self.assertTrue(changelog["matched"])
+                self.assertEqual(changelog["heading"], "## [1.2.3]")
+
+    def test_four_space_indented_code_heading_is_not_a_release_section(self):
+        self.write("CHANGELOG.md", "    ## [1.2.3]\n    Synthetic code example.\n")
+        self.assertFalse(self.data(self.cli(), 1)["changelog"]["matched"])
+
     def test_strict_semver_requested_and_manifest(self):
         for version in ("01.2.3", "1.2", "v1.2.3", "1.2.3-rc.1", "1.2.3+build", "1.2.3\n"):
             with self.subTest(version=version):
@@ -166,6 +178,30 @@ class ReleasePrepTests(unittest.TestCase):
             with self.subTest(content=content):
                 self.write("pyproject.toml", content)
                 self.assertEqual(self.cli().returncode, 2)
+
+    def assert_unsupported_toml_in_cli_and_memory(self, content):
+        self.write("pyproject.toml", content)
+        with self.subTest(interface="cli", content=content):
+            result = self.cli()
+            self.assertEqual(result.returncode, 2, result.stdout)
+            self.assertEqual(result.stdout, "")
+            self.assertNotIn("Traceback", result.stderr)
+        with self.subTest(interface="memory", content=content):
+            spec = importlib.util.spec_from_file_location("release_prep", SCRIPT)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            with self.assertRaises(ValueError):
+                module.python_version(content)
+
+    def test_escaped_quoted_project_tables_cannot_be_classified_generic(self):
+        self.assert_unsupported_toml_in_cli_and_memory(
+            '["pro\\u006aect"]\nversion = "9.9.9"\n')
+
+    def test_escaped_quoted_metadata_keys_cannot_bypass_version_checks(self):
+        for content in ('[project]\n"ver\\u0073ion" = "9.9.9"\n',
+                        '[project]\nversion = "1.2.3"\n"ver\\u0073ion" = "9.9.9"\n',
+                        '"pro\\u006aect" = {version = "9.9.9"}\n'):
+            self.assert_unsupported_toml_in_cli_and_memory(content)
 
     def test_malformed_duplicate_deep_or_nonobject_json_is_input_error(self):
         for content in ('{', '{"version":"1.2.3","version":"1.2.3"}', '[]',

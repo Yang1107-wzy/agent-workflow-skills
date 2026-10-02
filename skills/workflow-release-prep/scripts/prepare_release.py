@@ -51,6 +51,9 @@ def python_version(text):
         if '"""' in line or "'''" in line:
             raise ValueError("multiline TOML strings are outside this literal extractor")
         if line.startswith("["):
+            # Never decode quoted/escaped table names or silently treat them as generic.
+            if re.match(r'''\[+[^\]#]*["'\\]''', line):
+                raise ValueError("quoted/escaped TOML table names are unsupported")
             # Quoted/spaced spellings of project are ambiguous to this extractor.
             if re.match(r'''\[+\s*["']?project\b''', line) and not re.match(
                 r"\[(?:project|project\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)\]\s*(?:#.*)?$", line
@@ -68,6 +71,9 @@ def python_version(text):
                 project_seen = True
                 table_seen = True
             continue
+        # Check before section filtering: an escaped root key can also hide project metadata.
+        if re.match(r'''(?:"(?:\\.|[^"\\])*"|'[^']*')\s*(?:=|\.)''', line):
+            raise ValueError("quoted TOML keys are outside this literal extractor")
         if section is None and re.match(r'''["']?project\b''', line):
             raise ValueError("inline/dotted project metadata is unsupported")
         if section != "project":
@@ -274,7 +280,7 @@ def prepare_release(root, version, selected):
                 continue
             if fence is not None:
                 continue
-            if re.match(r"^#{1,6}\s+", line) and pattern.search(line):
+            if re.match(r"^ {0,3}#{1,6}\s+", line) and pattern.search(line):
                 matched, heading = True, line.strip()
                 break
     if not matched:
