@@ -1,7 +1,9 @@
 """Validate meeting-action structure and exact transcript evidence, read-only."""
 
 import argparse
+import io
 import json
+import os
 import re
 import sys
 from datetime import date
@@ -114,6 +116,20 @@ def validate(value, transcript):
     return report
 
 
+def quiet_stdout():
+    # Repair the descriptor so shutdown cannot retry a failed buffered write.
+    try:
+        descriptor = os.open(os.devnull, os.O_WRONLY)
+        try:
+            os.dup2(descriptor, sys.stdout.fileno())
+        finally:
+            # A closed stdout may cause os.open to reuse descriptor 1.
+            if descriptor != 1:
+                os.close(descriptor)
+    except (OSError, ValueError, TypeError, AttributeError, io.UnsupportedOperation):
+        sys.stdout = io.StringIO()
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("actions_json")
@@ -126,20 +142,27 @@ def main(argv=None):
         )
         transcript = Path(args.transcript).read_text(encoding="utf-8")
         report = validate(value, transcript)
+        if args.format == "json":
+            output = json.dumps(report, indent=2, ensure_ascii=True) + "\n"
+        else:
+            lines = [
+                f"{report['actions']} actions; {len(report['review_items'])} review items; "
+                f"{len(report['issues'])} validation issues",
+                *report["issues"],
+                *[
+                    f"Review {item['id']} {item['field']}: {item['reason']}"
+                    for item in report["review_items"]
+                ],
+            ]
+            output = "\n".join(lines) + "\n"
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8")
+        sys.stdout.write(output)
+        sys.stdout.flush()
     except (OSError, ValueError, RecursionError) as exc:
+        quiet_stdout()
         print("actions: " + str(exc), file=sys.stderr)
         return 2
-    if args.format == "json":
-        print(json.dumps(report, indent=2, ensure_ascii=True))
-    else:
-        print(
-            f"{report['actions']} actions; {len(report['review_items'])} review items; "
-            f"{len(report['issues'])} validation issues"
-        )
-        for issue in report["issues"]:
-            print(issue)
-        for item in report["review_items"]:
-            print(f"Review {item['id']} {item['field']}: {item['reason']}")
     return int(bool(report["issues"]))
 
 

@@ -118,6 +118,7 @@ class ReleasePrepTests(unittest.TestCase):
             with self.subTest(artifact=artifact):
                 self.assertTrue(self.data(self.cli("--artifact", artifact), 1)["issues"])
 
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "named pipes are unavailable on this platform")
     def test_fifo_is_rejected_without_blocking(self):
         os.mkfifo(self.root / "fifo")
         self.assertTrue(self.data(self.cli("--artifact", "fifo"), 1)["issues"])

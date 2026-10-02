@@ -1,6 +1,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -13,32 +14,54 @@ SCRIPT = ROOT / "skills/workflow-experiment-report/scripts/summarize_results.py"
 
 
 class ExperimentReportTests(unittest.TestCase):
-    def run_report(self, raw, expected=5, output_format="json", extra=()):
+    def run_report(
+        self, raw, expected=5, output_format="json", extra=(), env=None, stdout_failure=None
+    ):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "results.jsonl"
-            source.write_text(raw, encoding="utf-8")
+            source.write_bytes(raw.encode("utf-8"))
             before = source.read_bytes()
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPT),
-                    str(source),
-                    "--metric",
-                    "score",
-                    "--expected-cases",
-                    str(expected),
-                    "--unit",
-                    "points",
-                    "--protocol",
-                    "fixed-v1",
-                    "--format",
-                    output_format,
-                    *extra,
-                ],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
+            command = [
+                sys.executable,
+                str(SCRIPT),
+                str(source),
+                "--metric",
+                "score",
+                "--expected-cases",
+                str(expected),
+                "--unit",
+                "points",
+                "--protocol",
+                "fixed-v1",
+                "--format",
+                output_format,
+                *extra,
+            ]
+            if stdout_failure in ("closed", "readonly"):
+                wrapper = (
+                    "import os, runpy, sys\n"
+                    "mode, script, *arguments = sys.argv[1:]\n"
+                    "if mode == 'closed':\n"
+                    "    os.close(1)\n"
+                    "else:\n"
+                    "    descriptor = os.open(os.devnull, os.O_RDONLY)\n"
+                    "    os.dup2(descriptor, 1)\n"
+                    "    if descriptor != 1: os.close(descriptor)\n"
+                    "sys.argv = [script, *arguments]\n"
+                    "runpy.run_path(script, run_name='__main__')\n"
+                )
+                command = [sys.executable, "-c", wrapper, stdout_failure, *command[1:]]
+            if stdout_failure == "pipe":
+                process = subprocess.Popen(
+                    command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
+                )
+                process.stdout.close()
+                stderr = process.communicate()[1].decode("utf-8", errors="replace")
+                result = subprocess.CompletedProcess(command, process.returncode, "", stderr)
+            else:
+                result = subprocess.run(
+                    command, capture_output=True, text=True, encoding="utf-8", env=env
+                )
             self.assertEqual(source.read_bytes(), before)
             self.assertEqual([p.name for p in Path(directory).iterdir()], ["results.jsonl"])
             return result
@@ -48,6 +71,38 @@ class ExperimentReportTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, "")
         return json.loads(result.stdout)
+
+    def test_unicode_output_uses_utf8_under_ascii_stdio(self):
+        env = {**os.environ, "PYTHONIOENCODING": "ascii"}
+        for output_format in ("json", "markdown"):
+            with self.subTest(output_format=output_format):
+                result = self.run_report(
+                    '{"id":"a","score":2}\n',
+                    output_format=output_format,
+                    extra=("--unit", "分"),
+                    env=env,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stderr, "")
+                self.assertIn("分", result.stdout)
+
+    def test_stdout_failures_return_two_without_shutdown_traceback(self):
+        for failure in ("pipe", "closed", "readonly"):
+            for output_format in ("json", "markdown"):
+                for protocol_size in (8, 10000):
+                    with self.subTest(
+                        failure=failure, output_format=output_format, protocol_size=protocol_size
+                    ):
+                        result = self.run_report(
+                            '{"id":"a","score":2}\n',
+                            output_format=output_format,
+                            extra=("--protocol", "p" * protocol_size),
+                            stdout_failure=failure,
+                        )
+                        self.assertEqual(result.returncode, 2, result.stderr)
+                        self.assertNotIn("Traceback", result.stderr)
+                        self.assertNotIn("Exception ignored", result.stderr)
+                        self.assertNotIn("BrokenPipeError", result.stderr)
 
     def assert_invalid(self, raw, **kwargs):
         result = self.run_report(raw, **kwargs)

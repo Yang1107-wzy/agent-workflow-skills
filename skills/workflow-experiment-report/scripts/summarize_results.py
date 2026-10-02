@@ -4,8 +4,10 @@
 import argparse
 import hashlib
 import html
+import io
 import json
 import math
+import os
 import sys
 from decimal import Decimal
 from fractions import Fraction
@@ -209,6 +211,20 @@ def markdown(report):
     return "\n".join(rows)
 
 
+def quiet_stdout():
+    # Repair the descriptor so shutdown cannot retry a failed buffered write.
+    try:
+        descriptor = os.open(os.devnull, os.O_WRONLY)
+        try:
+            os.dup2(descriptor, sys.stdout.fileno())
+        finally:
+            # A closed stdout may cause os.open to reuse descriptor 1.
+            if descriptor != 1:
+                os.close(descriptor)
+    except (OSError, ValueError, TypeError, AttributeError, io.UnsupportedOperation):
+        sys.stdout = io.StringIO()
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("results_jsonl", type=Path)
@@ -232,10 +248,14 @@ def main(argv=None):
             if args.format == "json"
             else markdown(report)
         )
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8")
+        sys.stdout.write(output)
+        sys.stdout.flush()
     except (OSError, ValueError, OverflowError) as error:
+        quiet_stdout()
         print(f"error: {error}", file=sys.stderr)
         return 2
-    print(output, end="")
     return 0
 
 

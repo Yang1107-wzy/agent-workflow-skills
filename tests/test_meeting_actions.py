@@ -1,5 +1,6 @@
 import copy
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -46,22 +47,84 @@ def document(*items, meeting=None):
 
 
 class MeetingActionsTests(unittest.TestCase):
-    def check(self, value, transcript=TRANSCRIPT, raw=False, output_format="json"):
+    def check(
+        self,
+        value,
+        transcript=TRANSCRIPT,
+        raw=False,
+        output_format="json",
+        env=None,
+        stdout_failure=None,
+    ):
         with tempfile.TemporaryDirectory() as directory:
             ledger = Path(directory) / "actions.json"
             source = Path(directory) / "transcript.txt"
             ledger.write_text(value if raw else json.dumps(value), encoding="utf-8")
             source.write_text(transcript, encoding="utf-8")
             before = {path.name: path.read_bytes() for path in (ledger, source)}
-            result = subprocess.run(
-                [sys.executable, str(SCRIPT), str(ledger), str(source), "--format", output_format],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
+            command = [
+                sys.executable,
+                str(SCRIPT),
+                str(ledger),
+                str(source),
+                "--format",
+                output_format,
+            ]
+            if stdout_failure in ("closed", "readonly"):
+                wrapper = (
+                    "import os, runpy, sys\n"
+                    "mode, script, *arguments = sys.argv[1:]\n"
+                    "if mode == 'closed':\n"
+                    "    os.close(1)\n"
+                    "else:\n"
+                    "    descriptor = os.open(os.devnull, os.O_RDONLY)\n"
+                    "    os.dup2(descriptor, 1)\n"
+                    "    if descriptor != 1: os.close(descriptor)\n"
+                    "sys.argv = [script, *arguments]\n"
+                    "runpy.run_path(script, run_name='__main__')\n"
+                )
+                command = [sys.executable, "-c", wrapper, stdout_failure, *command[1:]]
+            if stdout_failure == "pipe":
+                process = subprocess.Popen(
+                    command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
+                )
+                process.stdout.close()
+                stderr = process.communicate()[1].decode("utf-8", errors="replace")
+                result = subprocess.CompletedProcess(command, process.returncode, "", stderr)
+            else:
+                result = subprocess.run(
+                    command, capture_output=True, text=True, encoding="utf-8", env=env
+                )
             self.assertEqual(before, {path.name: path.read_bytes() for path in (ledger, source)})
             self.assertEqual(sorted(p.name for p in Path(directory).iterdir()), sorted(before))
             return result
+
+    def test_unicode_text_output_uses_utf8_under_ascii_stdio(self):
+        result = self.check(
+            document(action(id="行动一", action="发送预算", owner=None, due_date=None)),
+            output_format="text",
+            env={**os.environ, "PYTHONIOENCODING": "ascii"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertIn("行动一", result.stdout)
+
+    def test_stdout_failures_return_two_without_shutdown_traceback(self):
+        for failure in ("pipe", "closed", "readonly"):
+            for output_format in ("json", "text"):
+                for id_size in (2, 10000):
+                    with self.subTest(
+                        failure=failure, output_format=output_format, id_size=id_size
+                    ):
+                        result = self.check(
+                            document(action(id="a" * id_size, owner=None, due_date=None)),
+                            output_format=output_format,
+                            stdout_failure=failure,
+                        )
+                        self.assertEqual(result.returncode, 2, result.stderr)
+                        self.assertNotIn("Traceback", result.stderr)
+                        self.assertNotIn("Exception ignored", result.stderr)
+                        self.assertNotIn("BrokenPipeError", result.stderr)
 
     def assert_invalid(self, value, fragment):
         result = self.check(value)

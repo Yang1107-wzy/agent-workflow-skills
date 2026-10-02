@@ -34,6 +34,11 @@ class DocsSyncTests(unittest.TestCase):
         result = subprocess.run(["git", *args], cwd=self.root, capture_output=True, check=True)
         return result.stdout.decode("utf-8").strip()
 
+    def git_input(self, args, raw):
+        return subprocess.run(
+            ["git", *args], cwd=self.root, input=raw, capture_output=True, check=True
+        ).stdout.strip()
+
     def write(self, name, content):
         path = self.root / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -77,9 +82,9 @@ class DocsSyncTests(unittest.TestCase):
         self.assertEqual(data["commit_changes"], [])
         self.assertEqual(data["working_tree"], {"tracked": [], "untracked": []})
 
-    def test_rename_delete_and_unusual_delimiters(self):
-        old_name = "docs/old\tname\n.md"
-        new_name = "docs/new\tname\n.md"
+    def test_filesystem_rename_and_delete(self):
+        old_name = "docs/old name.md"
+        new_name = "docs/new name.md"
         self.write(old_name, "A stable paragraph for rename detection.\n" * 10)
         base = self.commit("add unusual filename")
         self.git("mv", "--", old_name, new_name)
@@ -87,6 +92,32 @@ class DocsSyncTests(unittest.TestCase):
         data = self.report(base=base, head=self.commit("rename and delete"))
         renamed = next(row for row in data["commit_changes"] if row["status"].startswith("R"))
         self.assertEqual((renamed["old_path"], renamed["path"]), (old_name, new_name))
+        self.assertIn({"status": "D", "path": "tool.py"}, data["commit_changes"])
+
+    def test_commit_rename_and_delete_with_control_character_paths(self):
+        old_name, new_name = b"old\tname\n.md", b"new\tname\n.md"
+        blob = self.git_input(["hash-object", "-w", "--stdin"], b"Stable rename fixture.\n" * 10)
+        tool_blob = self.git("rev-parse", self.base + ":tool.py").encode("ascii")
+        commits = []
+        for name in (old_name, new_name):
+            docs_tree = self.git_input(
+                ["mktree", "-z"], b"100644 blob " + blob + b"\t" + name + b"\0"
+            )
+            entries = b"040000 tree " + docs_tree + b"\tdocs\0"
+            if not commits:
+                entries += b"100644 blob " + tool_blob + b"\ttool.py\0"
+            tree = self.git_input(["mktree", "-z"], entries)
+            parent = commits[-1] if commits else self.base
+            commit = self.git_input(
+                ["commit-tree", tree.decode("ascii"), "-p", parent, "-m", "control path"], b""
+            )
+            commits.append(commit.decode("ascii"))
+        data = self.report(base=commits[0], head=commits[1])
+        renamed = next(row for row in data["commit_changes"] if row["status"].startswith("R"))
+        self.assertEqual(
+            (renamed["old_path"], renamed["path"]),
+            ("docs/" + old_name.decode("utf-8"), "docs/" + new_name.decode("utf-8")),
+        )
         self.assertIn({"status": "D", "path": "tool.py"}, data["commit_changes"])
 
     def test_dirty_and_untracked_are_separate_from_commit_diff(self):
@@ -137,16 +168,11 @@ class DocsSyncTests(unittest.TestCase):
     def test_non_utf8_names_have_lossless_base64_instead_of_replacement(self):
         raw_path = b"docs/raw-\xff.md"
 
-        def git_input(args, raw):
-            return subprocess.run(
-                ["git", *args], cwd=self.root, input=raw, capture_output=True, check=True
-            ).stdout.strip()
-
         # Store raw bytes directly in Git objects; some filesystems reject them.
-        blob = git_input(["hash-object", "-w", "--stdin"], b"raw-name fixture\n")
-        docs_tree = git_input(["mktree", "-z"], b"100644 blob " + blob + b"\traw-\xff.md\0")
-        tree = git_input(["mktree", "-z"], b"040000 tree " + docs_tree + b"\tdocs\0")
-        head = git_input(
+        blob = self.git_input(["hash-object", "-w", "--stdin"], b"raw-name fixture\n")
+        docs_tree = self.git_input(["mktree", "-z"], b"100644 blob " + blob + b"\traw-\xff.md\0")
+        tree = self.git_input(["mktree", "-z"], b"040000 tree " + docs_tree + b"\tdocs\0")
+        head = self.git_input(
             ["commit-tree", tree.decode("ascii"), "-p", self.base, "-m", "raw path"], b""
         )
         data = self.report(head=head.decode("ascii"))
