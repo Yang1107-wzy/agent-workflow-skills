@@ -14,7 +14,7 @@ from pathlib import Path
 
 MAX_METADATA_BYTES = 1024 * 1024
 SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", re.ASCII)
-LITERAL = r'''(?:"([^"\\\r\n]*)"|'([^'\r\n]*)')'''
+LITERAL = r"""(?:"([^"\\\r\n]*)"|'([^'\r\n]*)')"""
 NOT_RUN = ["tests", "build", "artifact_source_provenance", "remote_ci", "publication"]
 
 
@@ -52,10 +52,10 @@ def python_version(text):
             raise ValueError("multiline TOML strings are outside this literal extractor")
         if line.startswith("["):
             # Never decode quoted/escaped table names or silently treat them as generic.
-            if re.match(r'''\[+[^\]#]*["'\\]''', line):
+            if re.match(r"""\[+[^\]#]*["'\\]""", line):
                 raise ValueError("quoted/escaped TOML table names are unsupported")
             # Quoted/spaced spellings of project are ambiguous to this extractor.
-            if re.match(r'''\[+\s*["']?project\b''', line) and not re.match(
+            if re.match(r"""\[+\s*["']?project\b""", line) and not re.match(
                 r"\[(?:project|project\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)\]\s*(?:#.*)?$", line
             ):
                 raise ValueError("unsupported project table syntax in pyproject.toml")
@@ -72,14 +72,14 @@ def python_version(text):
                 table_seen = True
             continue
         # Check before section filtering: an escaped root key can also hide project metadata.
-        if re.match(r'''(?:"(?:\\.|[^"\\])*"|'[^']*')\s*(?:=|\.)''', line):
+        if re.match(r"""(?:"(?:\\.|[^"\\])*"|'[^']*')\s*(?:=|\.)""", line):
             raise ValueError("quoted TOML keys are outside this literal extractor")
-        if section is None and re.match(r'''["']?project\b''', line):
+        if section is None and re.match(r"""["']?project\b""", line):
             raise ValueError("inline/dotted project metadata is unsupported")
         if section != "project":
             continue
         # Only bare keys are supported for the metadata we extract.
-        if re.match(r'''["'](?:version|dynamic)["']''', line):
+        if re.match(r"""["'](?:version|dynamic)["']""", line):
             raise ValueError("quoted project version/dynamic keys are unsupported")
         assignment = re.match(r"(version|dynamic)\b(.*)$", line)
         if not assignment:
@@ -91,7 +91,9 @@ def python_version(text):
             literal = re.fullmatch(r"\s*=\s*" + LITERAL + r"\s*(?:#.*)?", tail)
             if not literal:
                 raise ValueError("project.version requires one single-line quoted literal")
-            found[key] = version_string(next(value for value in literal.groups() if value is not None))
+            found[key] = version_string(
+                next(value for value in literal.groups() if value is not None)
+            )
         else:
             array = re.fullmatch(r"\s*=\s*\[(.*)\]\s*(?:#.*)?", tail)
             if not array:
@@ -103,7 +105,7 @@ def python_version(text):
                 if not item:
                     raise ValueError("project.dynamic contains unsupported values")
                 names.append(next(value for value in item.groups() if value is not None))
-                body = body[item.end():].strip()
+                body = body[item.end() :].strip()
                 if body:
                     if not body.startswith(","):
                         raise ValueError("project.dynamic names require commas")
@@ -178,8 +180,12 @@ def manifests(root, requested, issues):
 
 def artifact(root, relative, issues):
     path = Path(relative)
-    if (not relative or path.is_absolute() or ".." in path.parts
-            or any(char in relative for char in ("\n", "\r", "\x00", "\\"))):
+    if (
+        not relative
+        or path.is_absolute()
+        or ".." in path.parts
+        or any(char in relative for char in ("\n", "\r", "\x00", "\\"))
+    ):
         issues.append(f"artifact path must be contained and relative: {relative!r}")
         return None
     candidate = root
@@ -211,8 +217,12 @@ def artifact(root, relative, issues):
             digest.update(block)
             size += len(block)
         after = os.fstat(stream.fileno())
-    if (not size or (before.st_ino, before.st_size, before.st_mtime_ns) !=
-            (after.st_ino, after.st_size, after.st_mtime_ns) or size != after.st_size):
+    if (
+        not size
+        or (before.st_ino, before.st_size, before.st_mtime_ns)
+        != (after.st_ino, after.st_size, after.st_mtime_ns)
+        or size != after.st_size
+    ):
         issues.append(f"artifact changed during hashing: {relative}")
         return None
     return {"path": path.as_posix(), "bytes": size, "sha256": digest.hexdigest()}
@@ -223,26 +233,38 @@ def git_state(root, issues):
     env.update({"GIT_OPTIONAL_LOCKS": "0", "GIT_NO_LAZY_FETCH": "1", "GIT_TERMINAL_PROMPT": "0"})
 
     def run(*args):
-        return subprocess.run(["git", "--no-lazy-fetch", "-C", str(root), *args],
-                              capture_output=True, env=env, timeout=15)
+        return subprocess.run(
+            ["git", "--no-lazy-fetch", "-C", str(root), *args],
+            capture_output=True,
+            env=env,
+            timeout=15,
+        )
 
     try:
         repository = run("rev-parse", "--show-toplevel")
     except FileNotFoundError:
-        return {"status": "unavailable", "commit": None, "dirty": None,
-                "provenance": "not_checked"}
+        return {"status": "unavailable", "commit": None, "dirty": None, "provenance": "not_checked"}
     if repository.returncode:
         # If a Git marker exists, command failure is not evidence of a generic folder.
         if any((parent / ".git").exists() for parent in (root, *root.parents)):
             raise ValueError("Git repository inspection failed (Git --no-lazy-fetch required)")
-        return {"status": "not_repository", "commit": None, "dirty": None,
-                "provenance": "not_checked"}
+        return {
+            "status": "not_repository",
+            "commit": None,
+            "dirty": None,
+            "provenance": "not_checked",
+        }
     if Path(repository.stdout.decode("utf-8").strip()).resolve() != root:
-        return {"status": "outside_selected_scope", "commit": None, "dirty": None,
-                "provenance": "not_checked"}
+        return {
+            "status": "outside_selected_scope",
+            "commit": None,
+            "dirty": None,
+            "provenance": "not_checked",
+        }
     commit = run("rev-parse", "--verify", "HEAD")
-    status = run("status", "--porcelain=v1", "-z", "--untracked-files=all",
-                 "--ignore-submodules=none")
+    status = run(
+        "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none"
+    )
     if status.returncode:
         raise ValueError("cannot inspect current Git dirty state")
     dirty = bool(status.stdout)
@@ -250,9 +272,12 @@ def git_state(root, issues):
         issues.append("Git working tree is dirty (whole repository, including untracked files)")
     if commit.returncode:
         issues.append("Git HEAD commit is unresolved")
-    return {"status": "checked", "commit": commit.stdout.decode("ascii").strip()
-            if not commit.returncode else None, "dirty": dirty,
-            "provenance": "current_working_tree_only"}
+    return {
+        "status": "checked",
+        "commit": commit.stdout.decode("ascii").strip() if not commit.returncode else None,
+        "dirty": dirty,
+        "provenance": "current_working_tree_only",
+    }
 
 
 def prepare_release(root, version, selected):
@@ -266,8 +291,9 @@ def prepare_release(root, version, selected):
     matched = False
     heading = None
     if changelog.exists() or changelog.is_symlink():
-        pattern = re.compile(r"(?<![A-Za-z0-9_.+-])v?" + re.escape(version)
-                             + r"(?![A-Za-z0-9_.+-])")
+        pattern = re.compile(
+            r"(?<![A-Za-z0-9_.+-])v?" + re.escape(version) + r"(?![A-Za-z0-9_.+-])"
+        )
         fence = None
         for line in read_text(changelog).splitlines():
             marker = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
@@ -291,22 +317,38 @@ def prepare_release(root, version, selected):
         if row:
             artifacts.append(row)
     git = git_state(root, issues)
-    return {"schema_version": 1, "version": version, "local_ready": not issues,
-            "readiness_scope": "local_metadata_and_artifact_preflight",
-            "manifests": metadata, "changelog": {"path": "CHANGELOG.md", "matched": matched,
-                                                  "heading": heading},
-            "artifacts": artifacts, "git": git, "issues": issues, "checks_not_run": NOT_RUN[:]}
+    return {
+        "schema_version": 1,
+        "version": version,
+        "local_ready": not issues,
+        "readiness_scope": "local_metadata_and_artifact_preflight",
+        "manifests": metadata,
+        "changelog": {"path": "CHANGELOG.md", "matched": matched, "heading": heading},
+        "artifacts": artifacts,
+        "git": git,
+        "issues": issues,
+        "checks_not_run": NOT_RUN[:],
+    }
 
 
 def markdown(report):
-    lines = [f"# Release preflight {report['version']}", "",
-             f"Local metadata/artifact ready: {str(report['local_ready']).lower()}",
-             f"Git: {json.dumps(report['git'], ensure_ascii=False)}", "", "Manifest checks:"]
-    lines.extend(f"- {row['path']}: {row['status']} ({row['version']})"
-                 for row in report["manifests"])
-    lines.extend(["", f"Changelog section found: {report['changelog']['matched']}", "", "Artifacts:"])
-    lines.extend(f"- {row['sha256']}  {row['path']} ({row['bytes']} bytes)"
-                 for row in report["artifacts"])
+    lines = [
+        f"# Release preflight {report['version']}",
+        "",
+        f"Local metadata/artifact ready: {str(report['local_ready']).lower()}",
+        f"Git: {json.dumps(report['git'], ensure_ascii=False)}",
+        "",
+        "Manifest checks:",
+    ]
+    lines.extend(
+        f"- {row['path']}: {row['status']} ({row['version']})" for row in report["manifests"]
+    )
+    lines.extend(
+        ["", f"Changelog section found: {report['changelog']['matched']}", "", "Artifacts:"]
+    )
+    lines.extend(
+        f"- {row['sha256']}  {row['path']} ({row['bytes']} bytes)" for row in report["artifacts"]
+    )
     lines.extend(["", "Issues:"])
     lines.extend(f"- {issue}" for issue in report["issues"])
     lines.extend(["", "Checks not run: " + ", ".join(report["checks_not_run"]), ""])
@@ -336,8 +378,11 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         report = prepare_release(args.root, args.version, args.artifact)
-        rendered = (json.dumps(report, ensure_ascii=False, indent=2) + "\n"
-                    if args.format == "json" else markdown(report))
+        rendered = (
+            json.dumps(report, ensure_ascii=False, indent=2) + "\n"
+            if args.format == "json"
+            else markdown(report)
+        )
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8")
         sys.stdout.write(rendered)

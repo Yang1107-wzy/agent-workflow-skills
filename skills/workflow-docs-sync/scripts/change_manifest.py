@@ -97,16 +97,28 @@ def change_manifest(repository, base, head):
 
     environment = dict(os.environ)
     for variable in (
-        "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
-        "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE",
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_COMMON_DIR",
+        "GIT_INDEX_FILE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_NAMESPACE",
     ):
         environment.pop(variable, None)
     environment.update(GIT_OPTIONAL_LOCKS="0", GIT_NO_LAZY_FETCH="1")
 
     def git(*args):
         result = subprocess.run(
-            ["git", "--no-lazy-fetch", "-c", "core.fsmonitor=false",
-             "-c", "core.untrackedCache=false", *args],
+            [
+                "git",
+                "--no-lazy-fetch",
+                "-c",
+                "core.fsmonitor=false",
+                "-c",
+                "core.untrackedCache=false",
+                *args,
+            ],
             cwd=root,
             env=environment,
             capture_output=True,
@@ -131,10 +143,19 @@ def change_manifest(repository, base, head):
         return commit
 
     base_commit, head_commit = resolve(base), resolve(head)
-    changes = parse_commit_changes(git(
-        "diff", "--no-ext-diff", "--no-textconv", "--name-status", "-z", "--find-renames",
-        base_commit, head_commit, "--",
-    ))
+    changes = parse_commit_changes(
+        git(
+            "diff",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--name-status",
+            "-z",
+            "--find-renames",
+            base_commit,
+            head_commit,
+            "--",
+        )
+    )
     state = parse_working_tree(git("status", "--porcelain=v1", "-z", "--untracked-files=all"))
     candidates = documentation_candidates(git("ls-tree", "-r", "--name-only", "-z", head_commit))
     return {
@@ -159,6 +180,7 @@ def main(argv=None):
     except (OSError, ValueError) as exc:
         print("change-manifest: " + str(exc), file=sys.stderr)
         return 2
+
     def redirect_stdout_to_devnull():
         try:
             stdout_fd = sys.stdout.fileno()

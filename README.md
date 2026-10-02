@@ -6,9 +6,9 @@
 [![MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 ![Agent Skills](https://img.shields.io/badge/Agent_Skills-Codex_%2B_Claude_Code-blue)
 
-[中文说明](README.zh-CN.md) · [Skill catalog](#skills) · [Examples](examples/prompts.md) · [Research](research/sources-2026-10-02.md) · [Roadmap](ROADMAP.md)
+[中文说明](README.zh-CN.md) · [Skill catalog](#skills) · [Examples](examples/prompts.md) · [Research](research/sources-2026-10-02.md) · [Professional research](research/sources-professional-2026-10-02.md) · [Roadmap](ROADMAP.md)
 
-Five focused, original skills with standalone Python helpers, worked prompts and documented outputs. Portable `SKILL.md` instructions support Codex and Claude Code; no model API, paid service or plugin server is required. Helpers use Python 3.10+ standard library; Git is needed for repository snapshots.
+Ten focused, original skills with standalone Python helpers, worked prompts and documented outputs. Portable `SKILL.md` instructions support Codex and Claude Code; no model API, paid service or plugin server is required. Helpers use Python 3.10+ standard library; Git is needed for repository snapshots, documentation-change manifests and optional release provenance.
 
 ## Skills
 
@@ -19,6 +19,11 @@ Five focused, original skills with standalone Python helpers, worked prompts and
 | [workflow-source-writing](skills/workflow-source-writing/SKILL.md) | Technical reports and professional prose from mixed evidence | Complete draft + claim ledger + structural checker |
 | [workflow-repo-handoff](skills/workflow-repo-handoff/SKILL.md) | Handing off/resuming code with uncertain branch/test state | Git snapshot + commands/results + next-action note |
 | [workflow-skill-research](skills/workflow-skill-research/SKILL.md) | Selecting and maintaining useful Agent workflows | Dated GitHub/X source ledger + explainable ranked shortlist |
+| [workflow-meeting-actions](skills/workflow-meeting-actions/SKILL.md) | Turning meeting notes into commitments and proposed tasks | Action table + source-evidence validator + unresolved items |
+| [workflow-experiment-report](skills/workflow-experiment-report/SKILL.md) | Reporting existing numeric experiment/evaluation results | Coverage-aware metric summary + complete report |
+| [workflow-docs-sync](skills/workflow-docs-sync/SKILL.md) | Updating documentation after verified code changes | Explicit-commit change manifest + affected-doc plan/report |
+| [workflow-release-prep](skills/workflow-release-prep/SKILL.md) | Preparing a small project's version, notes and release artifacts | Local readiness report + SHA256 checksums + release checklist |
+| [workflow-bilingual-edit](skills/workflow-bilingual-edit/SKILL.md) | Editing/translating professional Chinese and English prose | Edited document + factual-preservation map + literal checker |
 
 These skills have separate triggers. They complement document/rendering and programming tools available in your agent rather than replacing them.
 
@@ -88,7 +93,7 @@ Keep reports outside scanned input folders. Inventories and rejection/review not
 - Each workflow is also tested with a realistic isolated agent request; see [EVALUATION.md](EVALUATION.md) for observed outcomes and limits.
 - Skill validation checks metadata, self-contained local resources and unfinished instructions; it cannot prove semantic accuracy.
 - Evidence checker/ranking metadata is caller-declared. These helpers do not verify truth, visit sources, prove a document is approved or measure objective popularity.
-- Runtime-neutral packaging and folder discovery paths are verified. A Claude Code runtime session has not been executed in this evaluation; no identical-model-behavior guarantee is implied.
+- Runtime-neutral packaging and folder discovery paths are verified. Each installed skill folder includes its own scripts/references; helpers do not import sibling skills. A Claude Code runtime session has not been executed in this evaluation; no identical-model-behavior guarantee is implied.
 
 Research draws on official catalogs and adjacent GitHub workflows, with X as dated discovery evidence. Original instructions/helpers are maintained here; upstream skill bodies are not copied. The [source ledger](research/sources-2026-10-02.md) records dates, access failures and inspiration boundaries.
 
@@ -100,9 +105,9 @@ python scripts/validate_skills.py
 python -m pip install ruff
 ruff check .
 ruff format --check .
-python scripts/package.py --version 0.1.0
+python scripts/package.py --version 0.2.0
 ```
 
 CI runs on Linux, Windows and macOS, verifies the bundle, and produces a ZIP. New skills should solve a demonstrated task, have a precise trigger and meaningful example, and preserve portable self-contained resources. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The [roadmap](ROADMAP.md) tracks the next professional workflows. A roadmap or skill file does not schedule background work; no recurring automation is configured by this repository.
+The [roadmap](ROADMAP.md) records completed milestones and future maintenance candidates. A roadmap or skill file does not schedule background work; no recurring automation is configured by this repository.

@@ -28,7 +28,7 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: python scripts/validate_skills.py
-      - run: python scripts/package.py --version 0.1.0
+      - run: python scripts/package.py --version 0.2.0
       - name: Verify installation in a fresh project root
         shell: bash
         run: python scripts/install.py --target both --scope project --project-root "$RUNNER_TEMP" --apply

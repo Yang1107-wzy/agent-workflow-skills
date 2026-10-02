@@ -8,7 +8,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[1] / "skills/workflow-docs-sync/scripts/change_manifest.py"
+SCRIPT = (
+    Path(__file__).resolve().parents[1] / "skills/workflow-docs-sync/scripts/change_manifest.py"
+)
 
 
 class DocsSyncTests(unittest.TestCase):
@@ -29,9 +31,7 @@ class DocsSyncTests(unittest.TestCase):
         self.base = self.commit("base")
 
     def git(self, *args):
-        result = subprocess.run(
-            ["git", *args], cwd=self.root, capture_output=True, check=True
-        )
+        result = subprocess.run(["git", *args], cwd=self.root, capture_output=True, check=True)
         return result.stdout.decode("utf-8").strip()
 
     def write(self, name, content):
@@ -46,9 +46,17 @@ class DocsSyncTests(unittest.TestCase):
 
     def cli(self, base=None, head=None, repository=None, env=None):
         return subprocess.run(
-            [sys.executable, str(SCRIPT), str(repository or self.root),
-             "--base=" + (base or self.base), "--head=" + (head or self.base)],
-            capture_output=True, text=True, encoding="utf-8", env=env,
+            [
+                sys.executable,
+                str(SCRIPT),
+                str(repository or self.root),
+                "--base=" + (base or self.base),
+                "--head=" + (head or self.base),
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
         )
 
     def report(self, **kwargs):
@@ -89,7 +97,9 @@ class DocsSyncTests(unittest.TestCase):
         data = self.report(head=head)
         self.assertEqual(data["commit_changes"], [{"status": "M", "path": "tool.py"}])
         self.assertEqual(data["working_tree"]["tracked"], [{"status": " M", "path": "tool.py"}])
-        self.assertEqual(data["working_tree"]["untracked"], [{"status": "??", "path": "scratch/new.md"}])
+        self.assertEqual(
+            data["working_tree"]["untracked"], [{"status": "??", "path": "scratch/new.md"}]
+        )
 
     def test_dirty_staged_rename_uses_old_and_new_paths(self):
         self.git("mv", "README.md", "Read Me.md")
@@ -104,9 +114,15 @@ class DocsSyncTests(unittest.TestCase):
         data = self.report(head="HEAD")
         suggestions = data["candidate_documentation_paths"]
         self.assertEqual(data["candidate_documentation_basis"], "head_tree_conventions_only")
-        self.assertEqual({row["path"] for row in suggestions}, {
-            "README.md", "docs/cli.md", "CONTRIBUTING.rst", "CHANGELOG.md",
-        })
+        self.assertEqual(
+            {row["path"] for row in suggestions},
+            {
+                "README.md",
+                "docs/cli.md",
+                "CONTRIBUTING.rst",
+                "CHANGELOG.md",
+            },
+        )
         self.assertTrue(all(row["reason"] for row in suggestions))
 
     def test_unicode_survives_ascii_process_locale(self):
@@ -122,24 +138,30 @@ class DocsSyncTests(unittest.TestCase):
         raw_path = b"docs/raw-\xff.md"
 
         def git_input(args, raw):
-            return subprocess.run(["git", *args], cwd=self.root, input=raw,
-                                  capture_output=True, check=True).stdout.strip()
+            return subprocess.run(
+                ["git", *args], cwd=self.root, input=raw, capture_output=True, check=True
+            ).stdout.strip()
 
         # Store raw bytes directly in Git objects; some filesystems reject them.
         blob = git_input(["hash-object", "-w", "--stdin"], b"raw-name fixture\n")
         docs_tree = git_input(["mktree", "-z"], b"100644 blob " + blob + b"\traw-\xff.md\0")
         tree = git_input(["mktree", "-z"], b"040000 tree " + docs_tree + b"\tdocs\0")
-        head = git_input(["commit-tree", tree.decode("ascii"), "-p", self.base, "-m", "raw path"], b"")
+        head = git_input(
+            ["commit-tree", tree.decode("ascii"), "-p", self.base, "-m", "raw path"], b""
+        )
         data = self.report(head=head.decode("ascii"))
         expected = base64.b64encode(raw_path).decode("ascii")
-        self.assertIn({"status": "A", "path": None, "path_bytes_base64": expected}, data["commit_changes"])
-        suggestion = next(row for row in data["candidate_documentation_paths"] if row["path"] is None)
+        self.assertIn(
+            {"status": "A", "path": None, "path_bytes_base64": expected}, data["commit_changes"]
+        )
+        suggestion = next(
+            row for row in data["candidate_documentation_paths"] if row["path"] is None
+        )
         self.assertEqual(suggestion["path_bytes_base64"], expected)
 
     def test_closed_stdout_pipe_returns_io_error_without_shutdown_traceback(self):
         process = subprocess.Popen(
-            [sys.executable, str(SCRIPT), str(self.root), "--base", self.base,
-             "--head", self.base],
+            [sys.executable, str(SCRIPT), str(self.root), "--base", self.base, "--head", self.base],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -167,7 +189,13 @@ class DocsSyncTests(unittest.TestCase):
         self.assertNotIn("OSError", stderr)
 
     def test_invalid_revisions_fail_without_json_or_traceback(self):
-        for revision in ("missing-commit", "--help", "--output=intrusion", "HEAD:tool.py", "HEAD..HEAD"):
+        for revision in (
+            "missing-commit",
+            "--help",
+            "--output=intrusion",
+            "HEAD:tool.py",
+            "HEAD..HEAD",
+        ):
             with self.subTest(revision=revision):
                 result = self.cli(base=revision)
                 self.assertEqual(result.returncode, 2, result.stderr)
@@ -203,11 +231,17 @@ class DocsSyncTests(unittest.TestCase):
         self.write("tool.py", "print('dirty')\n")
         self.write("untracked.txt", "private scratch\n")
         self.git("config", "diff.external", "definitely-not-a-command")
-        before = {str(path.relative_to(self.root)): path.read_bytes()
-                  for path in self.root.rglob("*") if path.is_file()}
+        before = {
+            str(path.relative_to(self.root)): path.read_bytes()
+            for path in self.root.rglob("*")
+            if path.is_file()
+        }
         self.report(head=head)
-        after = {str(path.relative_to(self.root)): path.read_bytes()
-                 for path in self.root.rglob("*") if path.is_file()}
+        after = {
+            str(path.relative_to(self.root)): path.read_bytes()
+            for path in self.root.rglob("*")
+            if path.is_file()
+        }
         self.assertEqual(after, before)
 
     def test_helper_works_when_skill_is_copied_without_siblings(self):
@@ -216,9 +250,18 @@ class DocsSyncTests(unittest.TestCase):
         target = Path(self.tmp.name) / "installed" / "workflow-docs-sync"
         shutil.copytree(SCRIPT.parents[1], target)
         result = subprocess.run(
-            [sys.executable, str(target / "scripts/change_manifest.py"), str(self.root),
-             "--base", self.base, "--head", self.base],
-            capture_output=True, text=True, encoding="utf-8",
+            [
+                sys.executable,
+                str(target / "scripts/change_manifest.py"),
+                str(self.root),
+                "--base",
+                self.base,
+                "--head",
+                self.base,
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["commit_changes"], [])
@@ -263,8 +306,17 @@ class GitParsingTests(unittest.TestCase):
     def test_copy_and_raw_old_name_round_trip(self):
         module = self.module()
         data = module.parse_commit_changes(b"C100\0old-\xff\0new.md\0")
-        self.assertEqual(data, [{"status": "C100", "path": "new.md", "old_path": None,
-                                 "old_path_bytes_base64": "b2xkLf8="}])
+        self.assertEqual(
+            data,
+            [
+                {
+                    "status": "C100",
+                    "path": "new.md",
+                    "old_path": None,
+                    "old_path_bytes_base64": "b2xkLf8=",
+                }
+            ],
+        )
         tracked = module.parse_working_tree(b"R  new.md\0old-\xff\0")["tracked"]
         self.assertEqual(tracked[0]["old_path_bytes_base64"], "b2xkLf8=")
 

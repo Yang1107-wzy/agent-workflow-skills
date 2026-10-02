@@ -6,4 +6,6 @@
 - [x] Add a path-scoped installer with preview/apply and collision tests, then skill validation and packaging.
 - [x] Document install/invocation in English and Chinese and provide realistic example prompts.
 - [x] Run lint, script tests, validator, release ZIP checks and GitHub CI; publish v0.1.0.
-- [ ] Continue milestone 2 one workflow at a time based on demonstrated value.
+- [x] Complete milestone2 one workflow at a time with per-task review and isolated forward evaluation.
+- [x] Verify final ten-skill package extraction, dual-target installation and twenty installed helper examples.
+- [ ] Verify exact-source cross-platform CI and v0.2.0 publication.

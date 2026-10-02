@@ -2,7 +2,7 @@
 
 [English](README.md) · [示例提示词](examples/prompts.md) · [选题来源](research/sources-2026-10-02.md) · [长期路线图](ROADMAP.md)
 
-把经常重复的材料处理、文件整理、专业写作、编程交接和技能调研变成可复用工作流。首版包含五个独立技能、可执行 Python 脚本、安装器和验证示例，不需要付费 API 或后台服务。
+把经常重复的材料处理、文件整理、专业写作、编程交接和技能调研变成可复用工作流。当前版本包含十个独立技能、可执行 Python 脚本、安装器和验证示例，不需要付费 API 或后台服务。
 
 | Skill | 用途 | 交付物 |
 | --- | --- | --- |
@@ -11,6 +11,11 @@
 | `workflow-source-writing` | 基于资料的技术报告与专业写作 | 完整文稿、主张与来源台账、结构检查 |
 | `workflow-repo-handoff` | 编程交接、恢复陌生分支、核对真实验证状态 | 当前 Git 快照、验证命令与结果、下一步 |
 | `workflow-skill-research` | GitHub/X 技能选题、工作流库维护 | 有日期的来源清单、可解释排序、实现规格 |
+| `workflow-meeting-actions` | 会议纪要提取承诺与建议行动 | 行动清单、来源行号验证、待确认项 |
+| `workflow-experiment-report` | 基于已有结果撰写实验/评测报告 | 覆盖率、条件指标汇总、完整报告 |
+| `workflow-docs-sync` | 代码修改后的项目文档同步 | 明确提交间的变更清单、受影响文档与核对结果 |
+| `workflow-release-prep` | 小项目版本与发布资料准备 | 就绪报告、校验和、发布说明与检查清单 |
+| `workflow-bilingual-edit` | 中英文专业润色与翻译 | 成稿、事实保留映射、字面锚点核对 |
 
 ## 安装
 
@@ -74,6 +79,6 @@ python skills/workflow-skill-research/scripts/rank_candidates.py examples/candid
 
 ## 后续方向
 
-实验结果报告、会议纪要行动项、项目文档同步、小工具发布准备、双语专业编辑，将按路线图逐项实现、测试和发布。路线图本身不创建定时任务，本仓库未配置自动唤醒。
+第二批覆盖实验结果报告、会议纪要行动项、项目文档同步、小工具发布准备和双语专业编辑。实际验证结果见 EVALUATION.md；后续按已发布路线图维护。路线图本身不创建定时任务，本仓库未配置自动唤醒。
 
 MIT 许可。开发验证：`python -m unittest discover -s tests -v` 和 `python scripts/validate_skills.py`。

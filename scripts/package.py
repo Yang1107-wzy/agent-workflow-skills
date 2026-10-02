@@ -73,7 +73,7 @@ def package(output, version):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--version", default="0.1.0")
+    parser.add_argument("--version", default="0.2.0")
     parser.add_argument("--output")
     args = parser.parse_args(argv)
     output = args.output or ROOT / "dist" / ("agent-workflow-skills-" + args.version + ".zip")

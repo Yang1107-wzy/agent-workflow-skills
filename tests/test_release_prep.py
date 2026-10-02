@@ -11,7 +11,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-SCRIPT = Path(__file__).resolve().parents[1] / "skills/workflow-release-prep/scripts/prepare_release.py"
+SCRIPT = (
+    Path(__file__).resolve().parents[1] / "skills/workflow-release-prep/scripts/prepare_release.py"
+)
 
 
 class ReleasePrepTests(unittest.TestCase):
@@ -31,9 +33,20 @@ class ReleasePrepTests(unittest.TestCase):
 
     def cli(self, *extra, root=None, script=SCRIPT, env=None):
         return subprocess.run(
-            [sys.executable, str(script), str(root or self.root), "--version", "1.2.3",
-             "--artifact", "dist/synthetic.txt", *extra],
-            capture_output=True, text=True, encoding="utf-8", env=env,
+            [
+                sys.executable,
+                str(script),
+                str(root or self.root),
+                "--version",
+                "1.2.3",
+                "--artifact",
+                "dist/synthetic.txt",
+                *extra,
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
         )
 
     def data(self, result, code=0):
@@ -44,15 +57,21 @@ class ReleasePrepTests(unittest.TestCase):
     def test_matching_metadata_changelog_and_hash_with_explicit_limits(self):
         data = self.data(self.cli())
         self.assertTrue(data["local_ready"])
-        self.assertEqual(data["manifests"], [{"path": "pyproject.toml", "kind": "python",
-                                            "version": "1.2.3", "status": "matched"}])
+        self.assertEqual(
+            data["manifests"],
+            [{"path": "pyproject.toml", "kind": "python", "version": "1.2.3", "status": "matched"}],
+        )
         artifact = data["artifacts"][0]
-        self.assertEqual(artifact["sha256"], hashlib.sha256(
-            (self.root / "dist/synthetic.txt").read_bytes()).hexdigest())
+        self.assertEqual(
+            artifact["sha256"],
+            hashlib.sha256((self.root / "dist/synthetic.txt").read_bytes()).hexdigest(),
+        )
         self.assertGreater(artifact["bytes"], 0)
         self.assertEqual(data["git"]["status"], "not_repository")
-        self.assertEqual(data["checks_not_run"], ["tests", "build", "artifact_source_provenance",
-                                                 "remote_ci", "publication"])
+        self.assertEqual(
+            data["checks_not_run"],
+            ["tests", "build", "artifact_source_provenance", "remote_ci", "publication"],
+        )
 
     def test_mismatch_is_readiness_issue(self):
         self.write("pyproject.toml", '[project]\nversion = "1.2.4"\n')
@@ -63,13 +82,15 @@ class ReleasePrepTests(unittest.TestCase):
     def test_generic_no_manifest_and_tool_only_pyproject(self):
         (self.root / "pyproject.toml").unlink()
         self.assertEqual(self.data(self.cli())["manifests"], [])
-        self.write("pyproject.toml", '[tool.ruff]\nline-length = 100\n')
+        self.write("pyproject.toml", "[tool.ruff]\nline-length = 100\n")
         self.assertEqual(self.data(self.cli())["manifests"][0]["status"], "generic")
 
     def test_missing_and_dynamic_package_versions_remain_unresolved(self):
-        for content in ('[project]\nname = "synthetic"\n',
-                        '[project]\ndynamic = ["version"]\n',
-                        '[project]\nversion = "1.2.3"\ndynamic = ["version"]\n'):
+        for content in (
+            '[project]\nname = "synthetic"\n',
+            '[project]\ndynamic = ["version"]\n',
+            '[project]\nversion = "1.2.3"\ndynamic = ["version"]\n',
+        ):
             with self.subTest(content=content):
                 self.write("pyproject.toml", content)
                 self.assertEqual(self.data(self.cli(), 1)["manifests"][0]["status"], "unresolved")
@@ -102,8 +123,12 @@ class ReleasePrepTests(unittest.TestCase):
         self.assertTrue(self.data(self.cli("--artifact", "fifo"), 1)["issues"])
 
     def test_changelog_heading_requires_exact_version_not_body_or_substring(self):
-        for content in ("## 11.2.3\nMentions 1.2.3 in body.\n", "## Unreleased\n1.2.3\n",
-                        "## 1.2.30\nSynthetic\n", "## 1.2.3-rc.1\nSynthetic\n"):
+        for content in (
+            "## 11.2.3\nMentions 1.2.3 in body.\n",
+            "## Unreleased\n1.2.3\n",
+            "## 1.2.30\nSynthetic\n",
+            "## 1.2.3-rc.1\nSynthetic\n",
+        ):
             with self.subTest(content=content):
                 self.write("CHANGELOG.md", content)
                 self.assertTrue(self.data(self.cli(), 1)["issues"])
@@ -141,20 +166,26 @@ class ReleasePrepTests(unittest.TestCase):
         self.assertEqual(self.cli().returncode, 2)
 
     def test_literal_toml_single_quotes_comments_and_unrelated_fields(self):
-        self.write("pyproject.toml", "[project]\nversion = '1.2.3' # local version\n"
-                   'dependencies = [\n  "demo>=1",\n]\n[project.urls]\nHomepage = "invalid"\n')
+        self.write(
+            "pyproject.toml",
+            "[project]\nversion = '1.2.3' # local version\n"
+            'dependencies = [\n  "demo>=1",\n]\n[project.urls]\nHomepage = "invalid"\n',
+        )
         self.assertTrue(self.data(self.cli())["local_ready"])
 
     def test_ambiguous_or_unsupported_project_metadata_is_input_error(self):
-        for content in ('[project]\nversion="1.2.3"\nversion="1.2.3"\n',
-                        '[project]\nversion=42\n', '[project]\nversion="1.2.3\n',
-                        '[project]\nversion="""1.2.3"""\n',
-                        '[project]\n"version"="1.2.3"\n',
-                        'project.version="1.2.3"\n',
-                        'project={version="1.2.3"}\n',
-                        '["project"]\nversion="1.2.3"\n',
-                        '[project]\nversion="1.2.3"\n[project]\n',
-                        '[project]\ndynamic=[\n"version"\n]\n'):
+        for content in (
+            '[project]\nversion="1.2.3"\nversion="1.2.3"\n',
+            "[project]\nversion=42\n",
+            '[project]\nversion="1.2.3\n',
+            '[project]\nversion="""1.2.3"""\n',
+            '[project]\n"version"="1.2.3"\n',
+            'project.version="1.2.3"\n',
+            'project={version="1.2.3"}\n',
+            '["project"]\nversion="1.2.3"\n',
+            '[project]\nversion="1.2.3"\n[project]\n',
+            '[project]\ndynamic=[\n"version"\n]\n',
+        ):
             with self.subTest(content=content):
                 self.write("pyproject.toml", content)
                 result = self.cli()
@@ -173,8 +204,10 @@ class ReleasePrepTests(unittest.TestCase):
         self.assertEqual(self.data(self.cli(), 1)["manifests"][0]["status"], "unresolved")
 
     def test_unsupported_version_table_and_quoted_key_forms_are_input_errors(self):
-        for content in ('[project]\n"version".extra="1.2.3"\n',
-                        '[project.version]\nvalue="1.2.3"\n'):
+        for content in (
+            '[project]\n"version".extra="1.2.3"\n',
+            '[project.version]\nvalue="1.2.3"\n',
+        ):
             with self.subTest(content=content):
                 self.write("pyproject.toml", content)
                 self.assertEqual(self.cli().returncode, 2)
@@ -194,19 +227,24 @@ class ReleasePrepTests(unittest.TestCase):
                 module.python_version(content)
 
     def test_escaped_quoted_project_tables_cannot_be_classified_generic(self):
-        self.assert_unsupported_toml_in_cli_and_memory(
-            '["pro\\u006aect"]\nversion = "9.9.9"\n')
+        self.assert_unsupported_toml_in_cli_and_memory('["pro\\u006aect"]\nversion = "9.9.9"\n')
 
     def test_escaped_quoted_metadata_keys_cannot_bypass_version_checks(self):
-        for content in ('[project]\n"ver\\u0073ion" = "9.9.9"\n',
-                        '[project]\nversion = "1.2.3"\n"ver\\u0073ion" = "9.9.9"\n',
-                        '"pro\\u006aect" = {version = "9.9.9"}\n'):
+        for content in (
+            '[project]\n"ver\\u0073ion" = "9.9.9"\n',
+            '[project]\nversion = "1.2.3"\n"ver\\u0073ion" = "9.9.9"\n',
+            '"pro\\u006aect" = {version = "9.9.9"}\n',
+        ):
             self.assert_unsupported_toml_in_cli_and_memory(content)
 
     def test_malformed_duplicate_deep_or_nonobject_json_is_input_error(self):
-        for content in ('{', '{"version":"1.2.3","version":"1.2.3"}', '[]',
-                        '{"version":"1.2.3","x":' + '[' * 2000 + '0' + ']' * 2000 + '}',
-                        '{"version":"1.2.3","x":NaN}'):
+        for content in (
+            "{",
+            '{"version":"1.2.3","version":"1.2.3"}',
+            "[]",
+            '{"version":"1.2.3","x":' + "[" * 2000 + "0" + "]" * 2000 + "}",
+            '{"version":"1.2.3","x":NaN}',
+        ):
             with self.subTest(content=content[:60]):
                 self.write("package.json", content)
                 result = self.cli()
@@ -222,8 +260,14 @@ class ReleasePrepTests(unittest.TestCase):
             self.assertNotIn("Traceback", result.stderr)
 
     def git(self, *args):
-        return subprocess.run(["git", *args], cwd=self.root, capture_output=True,
-                              text=True, encoding="utf-8", check=True).stdout.strip()
+        return subprocess.run(
+            ["git", *args],
+            cwd=self.root,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=True,
+        ).stdout.strip()
 
     def repository(self):
         self.git("init", "-b", "main")
@@ -239,12 +283,18 @@ class ReleasePrepTests(unittest.TestCase):
         self.assertEqual(data["git"]["commit"], commit)
         self.assertFalse(data["git"]["dirty"])
         self.write("untracked.txt", "synthetic pending work\n")
-        before = {str(p.relative_to(self.root)): p.read_bytes()
-                  for p in self.root.rglob("*") if p.is_file()}
+        before = {
+            str(p.relative_to(self.root)): p.read_bytes()
+            for p in self.root.rglob("*")
+            if p.is_file()
+        }
         data = self.data(self.cli(), 1)
         self.assertTrue(data["git"]["dirty"])
-        after = {str(p.relative_to(self.root)): p.read_bytes()
-                 for p in self.root.rglob("*") if p.is_file()}
+        after = {
+            str(p.relative_to(self.root)): p.read_bytes()
+            for p in self.root.rglob("*")
+            if p.is_file()
+        }
         self.assertEqual(after, before)
 
     def test_inherited_git_directory_cannot_redirect_selected_source(self):
@@ -260,8 +310,15 @@ class ReleasePrepTests(unittest.TestCase):
         self.write("nested-package/CHANGELOG.md", "## 1.2.3\nSynthetic generic package.\n")
         self.write("nested-package/dist/synthetic.txt", "Synthetic artifact.\n")
         data = self.data(self.cli(root=nested))
-        self.assertEqual(data["git"], {"status": "outside_selected_scope", "commit": None,
-                                       "dirty": None, "provenance": "not_checked"})
+        self.assertEqual(
+            data["git"],
+            {
+                "status": "outside_selected_scope",
+                "commit": None,
+                "dirty": None,
+                "provenance": "not_checked",
+            },
+        )
 
     def test_worktree_git_file_recognizes_exact_selected_root(self):
         self.repository()
@@ -284,14 +341,25 @@ class ReleasePrepTests(unittest.TestCase):
 
     def test_missing_root_and_invalid_usage(self):
         self.assertEqual(self.cli(root=self.root / "absent").returncode, 2)
-        result = subprocess.run([sys.executable, str(SCRIPT), str(self.root), "--version", "1.2.3"],
-                                capture_output=True)
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), str(self.root), "--version", "1.2.3"], capture_output=True
+        )
         self.assertEqual(result.returncode, 2)
 
     def test_closed_stdout_consumer_has_no_shutdown_traceback(self):
-        process = subprocess.Popen([sys.executable, str(SCRIPT), str(self.root),
-                                    "--version", "1.2.3", "--artifact", "dist/synthetic.txt"],
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                str(SCRIPT),
+                str(self.root),
+                "--version",
+                "1.2.3",
+                "--artifact",
+                "dist/synthetic.txt",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         process.stdout.close()
         stderr = process.communicate()[1].decode("utf-8", errors="replace")
         self.assertEqual(process.returncode, 2, stderr)
@@ -300,11 +368,14 @@ class ReleasePrepTests(unittest.TestCase):
         self.assertNotIn("BrokenPipeError", stderr)
 
     def test_closed_stdout_descriptor_is_input_io_error(self):
-        wrapper = ("import os,runpy,sys; script,root=sys.argv[1:3]; os.close(1); "
-                   "sys.argv=[script,root,'--version','1.2.3','--artifact','dist/synthetic.txt']; "
-                   "runpy.run_path(script,run_name='__main__')")
-        result = subprocess.run([sys.executable, "-c", wrapper, str(SCRIPT), str(self.root)],
-                                capture_output=True)
+        wrapper = (
+            "import os,runpy,sys; script,root=sys.argv[1:3]; os.close(1); "
+            "sys.argv=[script,root,'--version','1.2.3','--artifact','dist/synthetic.txt']; "
+            "runpy.run_path(script,run_name='__main__')"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", wrapper, str(SCRIPT), str(self.root)], capture_output=True
+        )
         stderr = result.stderr.decode("utf-8", errors="replace")
         self.assertEqual(result.returncode, 2)
         self.assertNotIn("Traceback", stderr)
@@ -314,11 +385,17 @@ class ReleasePrepTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("release_prep", SCRIPT)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        with mock.patch.object(module.sys, "stdout") as stdout, \
-                mock.patch.object(module.sys, "stderr", io.StringIO()) as stderr:
+        with (
+            mock.patch.object(module.sys, "stdout") as stdout,
+            mock.patch.object(module.sys, "stderr", io.StringIO()) as stderr,
+        ):
             stdout.write.side_effect = OSError("synthetic output failure")
-            self.assertEqual(module.main([str(self.root), "--version", "1.2.3",
-                                          "--artifact", "dist/synthetic.txt"]), 2)
+            self.assertEqual(
+                module.main(
+                    [str(self.root), "--version", "1.2.3", "--artifact", "dist/synthetic.txt"]
+                ),
+                2,
+            )
             stdout.flush.assert_not_called()
             self.assertIn("synthetic output failure", stderr.getvalue())
 
@@ -326,21 +403,29 @@ class ReleasePrepTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("release_prep", SCRIPT)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        with mock.patch.object(module.sys, "stdout") as stdout, \
-                mock.patch.object(module.sys, "stderr", io.StringIO()) as stderr:
+        with (
+            mock.patch.object(module.sys, "stdout") as stdout,
+            mock.patch.object(module.sys, "stderr", io.StringIO()) as stderr,
+        ):
             stdout.flush.side_effect = OSError("synthetic flush failure")
-            self.assertEqual(module.main([str(self.root), "--version", "1.2.3",
-                                          "--artifact", "dist/synthetic.txt"]), 2)
+            self.assertEqual(
+                module.main(
+                    [str(self.root), "--version", "1.2.3", "--artifact", "dist/synthetic.txt"]
+                ),
+                2,
+            )
             self.assertIn("synthetic flush failure", stderr.getvalue())
 
     def test_json_quoted_braces_do_not_count_as_nesting(self):
-        self.write("package.json", json.dumps({"version": "1.2.3", "description": '[' * 100}))
+        self.write("package.json", json.dumps({"version": "1.2.3", "description": "[" * 100}))
         self.assertTrue(self.data(self.cli())["local_ready"])
 
     def test_standalone_installed_skill(self):
         target = Path(self.temp.name) / "installed/workflow-release-prep"
         shutil.copytree(SCRIPT.parents[1], target)
-        self.assertTrue(self.data(self.cli(script=target / "scripts/prepare_release.py"))["local_ready"])
+        self.assertTrue(
+            self.data(self.cli(script=target / "scripts/prepare_release.py"))["local_ready"]
+        )
 
 
 if __name__ == "__main__":

@@ -13,13 +13,13 @@ Objective: build a maintained, practical Codex / Claude Code skill library, publ
 
 ## Milestone 2 — professional workflows
 
-- [ ] Experiment report from existing results, preserving metric/protocol definitions.
-- [ ] Meeting notes into tasks with explicit owners and unresolved decisions.
-- [ ] Project documentation synchronization from verified code changes.
-- [ ] Small-package release preparation with version/artifact/CI consistency.
-- [ ] Bilingual professional editing with a factual preservation map.
+- [x] Experiment report from existing results, preserving metric/protocol definitions.
+- [x] Meeting notes into tasks with explicit owners and unresolved decisions.
+- [x] Project documentation synchronization from verified code changes.
+- [x] Small-package release preparation with version/artifact/CI consistency.
+- [x] Bilingual professional editing with a factual preservation map.
 
-Next selected workflow: **meeting notes to actions**, based on the initial forward research evaluation. Experiment reporting follows; maintain separate claim/protocol definitions.
+All ten named workflows are implemented with reviewed helpers and isolated task evaluations. Final integration requires bundle installation/smoke checks, exact-source CI and verified v0.2.0 publication.
 
 ## Each iteration
 
@@ -31,3 +31,7 @@ Next selected workflow: **meeting notes to actions**, based on the initial forwa
 6. Publish the verified change/release; report what actually shipped and what remains.
 
 A roadmap file does not schedule autonomous runs. The Codex goal tracks continuation in this chat; no periodic automation or posting to X is configured.
+
+## Maintenance after the named ten-workflow milestone
+
+Review reproducible bug reports and official discovery-path/schema changes before expanding the catalog. Future additions need a distinct repeated task, a meaningful artifact and an actual evaluated use case; do not grow the library simply by copying more prompts. Candidate requests are prioritized in issues, with source dates and evidence limits retained. There is no scheduled background automation or promise of continuous unattended execution.
