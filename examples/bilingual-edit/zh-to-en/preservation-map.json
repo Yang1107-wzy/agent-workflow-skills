@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "id": "project",
+      "source": "青灯项目",
+      "target": "Qingdeng Project",
+      "kind": "name"
+    },
+    {
+      "id": "person",
+      "source": "林河",
+      "target": "Lin He",
+      "kind": "name"
+    },
+    {
+      "id": "date",
+      "source": "2026-09-01",
+      "target": "2026-09-01",
+      "kind": "date"
+    },
+    {
+      "id": "latency",
+      "source": "12 ms",
+      "target": "12 ms",
+      "kind": "number"
+    },
+    {
+      "id": "samples",
+      "source": "8 个合成样本",
+      "target": "8 synthetic samples",
+      "kind": "number"
+    },
+    {
+      "id": "prototype",
+      "source": "仍处于原型阶段",
+      "target": "is still at the prototype stage",
+      "kind": "status"
+    },
+    {
+      "id": "uncertainty",
+      "source": "可能表明",
+      "target": "may suggest",
+      "kind": "other"
+    },
+    {
+      "id": "evidence-limit",
+      "source": "尚不能证明部署层面的性能提升",
+      "target": "does not establish a deployment-level performance improvement",
+      "kind": "status"
+    },
+    {
+      "id": "application",
+      "source": "试点申请正在准备中",
+      "target": "The pilot application is being prepared",
+      "kind": "status"
+    },
+    {
+      "id": "submission",
+      "source": "尚未提交，也尚未获批",
+      "target": "has not been submitted or approved",
+      "kind": "status"
+    },
+    {
+      "id": "comparison",
+      "source": "下一阶段计划开展受控比较",
+      "target": "A controlled comparison is planned for the next phase",
+      "kind": "status"
+    }
+  ]
+}
