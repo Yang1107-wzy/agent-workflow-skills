@@ -150,6 +150,22 @@ class DocsSyncTests(unittest.TestCase):
         self.assertNotIn("Exception ignored", stderr)
         self.assertNotIn("BrokenPipeError", stderr)
 
+    def test_closed_stdout_descriptor_returns_io_error_without_shutdown_traceback(self):
+        wrapper = (
+            "import os, runpy, sys; script, repo, base = sys.argv[1:4]; os.close(1); "
+            "sys.argv = [script, repo, '--base', base, '--head', base]; "
+            "runpy.run_path(script, run_name='__main__')"
+        )
+        process = subprocess.run(
+            [sys.executable, "-c", wrapper, str(SCRIPT), str(self.root), self.base],
+            capture_output=True,
+        )
+        stderr = process.stderr.decode("utf-8", errors="replace")
+        self.assertEqual(process.returncode, 2, stderr)
+        self.assertNotIn("Traceback", stderr)
+        self.assertNotIn("Exception ignored", stderr)
+        self.assertNotIn("OSError", stderr)
+
     def test_invalid_revisions_fail_without_json_or_traceback(self):
         for revision in ("missing-commit", "--help", "--output=intrusion", "HEAD:tool.py", "HEAD..HEAD"):
             with self.subTest(revision=revision):
