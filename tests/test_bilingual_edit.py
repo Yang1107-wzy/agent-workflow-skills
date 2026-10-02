@@ -109,6 +109,38 @@ class BilingualEditTests(unittest.TestCase):
         result = self.check(mapping(item(source="2026-09-01", target="2026-09-01", kind="date")))
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_literal_matching_preserves_physical_newlines(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source_path = Path(directory) / "source.txt"
+            edited_path = Path(directory) / "edited.txt"
+            map_path = Path(directory) / "map.json"
+            source_path.write_bytes(b"12\r\nms")
+            edited_path.write_bytes(b"12\r\nms")
+            for target, expected_returncode, expected_count in [
+                ("12\r\nms", 0, 1),
+                ("12\nms", 1, 0),
+            ]:
+                with self.subTest(target=repr(target)):
+                    map_path.write_text(
+                        json.dumps(mapping(item(source="12\r\nms", target=target))),
+                        encoding="utf-8",
+                    )
+                    arguments = [
+                        sys.executable,
+                        str(SCRIPT),
+                        *map(str, (source_path, edited_path, map_path)),
+                    ]
+                    result = subprocess.run(
+                        arguments,
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                    )
+                    self.assertEqual(result.returncode, expected_returncode, result.stderr)
+                    report = json.loads(result.stdout)
+                    self.assertEqual(report["evidence"][0]["source_count"], 1)
+                    self.assertEqual(report["evidence"][0]["target_count"], expected_count)
+
     def test_duplicate_ids_are_input_error(self):
         self.assert_invalid(mapping(item(), item()), "unique")
 

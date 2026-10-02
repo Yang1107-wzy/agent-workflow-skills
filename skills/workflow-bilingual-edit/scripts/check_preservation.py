@@ -107,8 +107,10 @@ def main(argv=None):
     parser.add_argument("--format", choices=("json", "text"), default="json")
     args = parser.parse_args(argv)
     try:
-        source = Path(args.source).read_text(encoding="utf-8")
-        edited = Path(args.edited).read_text(encoding="utf-8")
+        with Path(args.source).open(encoding="utf-8", newline="") as source_file:
+            source = source_file.read()
+        with Path(args.edited).open(encoding="utf-8", newline="") as edited_file:
+            edited = edited_file.read()
         value = json.loads(
             Path(args.map_json).read_text(encoding="utf-8"),
             object_pairs_hook=unique_object,
