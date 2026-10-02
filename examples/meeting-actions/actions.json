@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "meeting": {"date": "2026-10-02", "timezone": "Asia/Tokyo"},
+  "actions": [
+    {
+      "id": "a1",
+      "action": "Send the revised budget",
+      "status": "committed",
+      "owner": "Mira",
+      "due_text": "by 2026-10-09",
+      "due_date": "2026-10-09",
+      "resolution_basis": null,
+      "source": {
+        "start_line": 2,
+        "end_line": 2,
+        "quote": "Mira: I will send the revised budget by 2026-10-09."
+      }
+    },
+    {
+      "id": "a2",
+      "action": "Draft an onboarding checklist",
+      "status": "proposed",
+      "owner": null,
+      "due_text": null,
+      "due_date": null,
+      "resolution_basis": null,
+      "source": {
+        "start_line": 4,
+        "end_line": 4,
+        "quote": "Mira: We could draft an onboarding checklist; no owner yet."
+      }
+    },
+    {
+      "id": "a3",
+      "action": "Compare the vendor quotes",
+      "status": "committed",
+      "owner": "Leo",
+      "due_text": null,
+      "due_date": null,
+      "resolution_basis": null,
+      "source": {
+        "start_line": 5,
+        "end_line": 5,
+        "quote": "Leo: I will compare the vendor quotes."
+      }
+    }
+  ]
+}

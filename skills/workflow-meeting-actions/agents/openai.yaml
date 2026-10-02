@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meeting Actions"
+  short_description: "Extract sourced commitments, proposals and unresolved follow-ups"
+  default_prompt: "Use $workflow-meeting-actions to turn this transcript into actions and a review list."
