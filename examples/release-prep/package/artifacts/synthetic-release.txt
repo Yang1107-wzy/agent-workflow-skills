@@ -1,0 +1,2 @@
+Synthetic release-preparation artifact for checksum examples.
+This is plain text, not a wheel, source distribution, or verified build output.
