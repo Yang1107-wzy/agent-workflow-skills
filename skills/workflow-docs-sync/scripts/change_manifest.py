@@ -159,7 +159,21 @@ def main(argv=None):
     except (OSError, ValueError) as exc:
         print("change-manifest: " + str(exc), file=sys.stderr)
         return 2
-    sys.stdout.buffer.write((json.dumps(report, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+    try:
+        sys.stdout.buffer.write(
+            (json.dumps(report, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+        )
+        sys.stdout.buffer.flush()
+    except BrokenPipeError:
+        try:
+            with open(os.devnull, "wb") as null_device:
+                os.dup2(null_device.fileno(), sys.stdout.fileno())
+        except OSError:
+            pass
+        return 2
+    except OSError as exc:
+        print("change-manifest: " + str(exc), file=sys.stderr)
+        return 2
     return 0
 
 

@@ -136,6 +136,20 @@ class DocsSyncTests(unittest.TestCase):
         suggestion = next(row for row in data["candidate_documentation_paths"] if row["path"] is None)
         self.assertEqual(suggestion["path_bytes_base64"], expected)
 
+    def test_closed_stdout_pipe_returns_io_error_without_shutdown_traceback(self):
+        process = subprocess.Popen(
+            [sys.executable, str(SCRIPT), str(self.root), "--base", self.base,
+             "--head", self.base],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        process.stdout.close()
+        stderr = process.communicate()[1].decode("utf-8", errors="replace")
+        self.assertEqual(process.returncode, 2, stderr)
+        self.assertNotIn("Traceback", stderr)
+        self.assertNotIn("Exception ignored", stderr)
+        self.assertNotIn("BrokenPipeError", stderr)
+
     def test_invalid_revisions_fail_without_json_or_traceback(self):
         for revision in ("missing-commit", "--help", "--output=intrusion", "HEAD:tool.py", "HEAD..HEAD"):
             with self.subTest(revision=revision):
