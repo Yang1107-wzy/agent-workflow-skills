@@ -6,3 +6,5 @@ dist/
 research/baseline/
 research/forward-evals/
 *.log
+
+.worktrees/
