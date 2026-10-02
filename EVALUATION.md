@@ -36,8 +36,10 @@ Native GitHub CLI standards dry-run accepted all ten skill manifests. It emitted
 
 ## Ten-skill bundle integration verification
 
-Latest-source suite: **170 tests passed**. Ruff lint and canonical formatting passed; ten skill manifests and local resources validated. All five professional workflows passed independent code review and isolated task execution, including focused fixes before approval. Formatter-only follow-up edits were checked for identical Python ASTs.
+Latest-source macOS suite: **173 tests, OK (one Linux-only raw-filename case skipped because macOS cannot create that filename)**. Ruff lint and canonical formatting passed; ten skill manifests and local resources validated. All five professional workflows passed independent code review and isolated task execution, including focused fixes before approval. Formatter-only follow-up edits were checked for identical Python ASTs.
 
 The release ZIP was extracted to a clean temporary directory, all ten skills installed independently into fresh Codex and Claude target directories, and **20 installed helper examples** ran successfully (ten per target). No private evaluation logs or caches entered the archive. This tests distribution/script execution, not an actual Claude Code model session. Final exact-source GitHub CI and release digest checks are external publication gates.
 
 Whole-branch review approved the final portability corrections: both meeting/experiment outputs handle legacy encodings and failed stdout streams; Windows-specific FIFO/physical-name/newline fixtures were corrected without dropping parser coverage. The final fixer recorded 105 focused and 170 full-suite passes, with canonical formatting and lint clean.
+
+The first expanded-matrix run passed both Windows jobs and macOS, but failed Ubuntu3.10/3.14 on valid UTF-8 artifact names decoded via an ASCII filesystem locale. A focused display-only repair recovered those bytes as Unicode and escaped undecodable bytes visibly, preserving original lookup/containment/hashes. Deterministic POSIX regressions passed locally; the exact-source Linux rerun remains the publication gate.
