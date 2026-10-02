@@ -23,7 +23,7 @@ Complete `experiment-report.md` with:
 - Source location and SHA-256, raw metric key, unit, protocol definition/evidence and expected-case basis.
 - Methodology: one unique case ID per row; null is an explicit failed result; absent expected rows are missing; zero and negative measurements remain valid.
 - Counts of observed, expected, returned, failed and missing cases; measurement coverage as returned/expected; mean, median, min and max conditioned on returned measurements, with their separate denominator.
-- Interpretation and limitations grounded in the source, including missingness, failed measurements, metric direction/meaning, caller-supplied definitions and numeric rounding. With zero returned measurements, keep summary statistics null and describe coverage 0.
+- Interpretation and limitations grounded in the source, including missingness, failed measurements, metric direction/meaning, caller-supplied definitions and numeric rounding. Read `statistics.exact.mean` and `.median`: when `serialized_numeric_is_exact` is false, show the numeric result as a rounded approximation beside its exact numerator/denominator. With zero returned measurements, keep summary statistics and exact metadata null and describe coverage 0.
 
 These are descriptive population summaries. A returned number alone does not establish correctness or quality. Do not infer uncertainty, significance, generalization or causal improvement. Comparisons require matching protocol, metric definition/unit, expected population and missingness/conditioning rules; verify these definitions before comparing. If they differ or are unknown, explain the incompatibility. Do not invent runs, silently treat missing cases as zero, or call missing returns successful.
 

@@ -24,8 +24,20 @@
     "median": 0,
     "min": -1,
     "max": 2.5,
+    "exact": {
+      "mean": {
+        "numerator": 1,
+        "denominator": 2,
+        "serialized_numeric_is_exact": true
+      },
+      "median": {
+        "numerator": 0,
+        "denominator": 1,
+        "serialized_numeric_is_exact": true
+      }
+    },
     "denominator": 3,
     "population": "returned measurements only"
   },
-  "numeric_precision": "Integer inputs and integral aggregates are exact. Decimal float inputs must round-trip to the same decimal value. Nonintegral aggregates are rounded to binary64; nonfinite output and nonzero-to-zero underflow are rejected."
+  "numeric_precision": "Integer inputs and integral aggregates are exact. Decimal float inputs must round-trip to the same decimal value. Extrema use the same decimal rational ordering as mean and median, preserving the chosen input numbers. Nonintegral aggregates are rounded to binary64. statistics.exact records reduced mean/median ratios and whether each serialized decimal equals that ratio; null means no measurements. This flag does not describe binary float representation. Nonfinite output and nonzero-to-zero underflow are rejected."
 }

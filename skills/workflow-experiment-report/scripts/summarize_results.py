@@ -92,23 +92,34 @@ def summarize(raw, source, metric, expected, unit, protocol):
             else:
                 raise ValueError("metric must be a finite JSON number or null")
             observed += 1
+        except RecursionError as error:
+            raise ValueError(f"line {line_number}: JSON nesting exceeds decoder limit") from error
         except (ValueError, OverflowError) as error:
             raise ValueError(f"line {line_number}: {error}") from error
 
     if observed > expected:
         raise ValueError("expected-cases must be at least the observed row count")
     returned = len(measurements)
-    ordered = sorted(Fraction(str(value)) for value in measurements)
+    ordered_measurements = sorted(measurements, key=lambda value: Fraction(str(value)))
+    ordered = [Fraction(str(value)) for value in ordered_measurements]
     statistics = dict.fromkeys(("mean", "median", "min", "max"))
+    exact = dict.fromkeys(("mean", "median"))
     if returned:
         middle = returned // 2
         median = ordered[middle] if returned % 2 else (ordered[middle - 1] + ordered[middle]) / 2
         statistics.update(
-            mean=output_number(sum(ordered, Fraction(0)) / returned),
-            median=output_number(median),
-            min=min(measurements),
-            max=max(measurements),
+            min=ordered_measurements[0],
+            max=ordered_measurements[-1],
         )
+        for name, rational in [("mean", sum(ordered, Fraction(0)) / returned), ("median", median)]:
+            number = output_number(rational)
+            statistics[name] = number
+            exact[name] = {
+                "numerator": rational.numerator,
+                "denominator": rational.denominator,
+                "serialized_numeric_is_exact": Fraction(str(number)) == rational,
+            }
+    statistics["exact"] = exact
     statistics.update(denominator=returned, population="returned measurements only")
     return {
         "schema_version": 1,
@@ -131,8 +142,12 @@ def summarize(raw, source, metric, expected, unit, protocol):
         "statistics": statistics,
         "numeric_precision": (
             "Integer inputs and integral aggregates are exact. Decimal float inputs must "
-            "round-trip to the same decimal value. Nonintegral aggregates are rounded to "
-            "binary64; nonfinite output and nonzero-to-zero underflow are rejected."
+            "round-trip to the same decimal value. Extrema use the same decimal rational "
+            "ordering as mean and median, preserving the chosen input numbers. Nonintegral "
+            "aggregates are rounded to binary64. statistics.exact records reduced mean/median "
+            "ratios and whether each serialized decimal equals that ratio; null means no "
+            "measurements. This flag does not describe binary float representation. "
+            "Nonfinite output and nonzero-to-zero underflow are rejected."
         ),
     }
 
@@ -142,6 +157,19 @@ def markdown(report):
         return html.escape(str(value)).replace("|", "\\|").replace("\n", "\\n").replace("\r", "\\r")
 
     counts, stats = report["counts"], report["statistics"]
+
+    def display_statistic(name):
+        value = stats[name]
+        if value is None:
+            return "null (no measurements)"
+        exact = stats["exact"].get(name)
+        if exact is not None and not exact["serialized_numeric_is_exact"]:
+            return (
+                f"{value} (rounded approximation; exact "
+                f"{exact['numerator']}/{exact['denominator']})"
+            )
+        return str(value)
+
     rows = [
         "# Experiment summary",
         "",
@@ -166,10 +194,7 @@ def markdown(report):
         "",
         "| Statistic | Value |",
         "| --- | ---: |",
-        *[
-            f"| {name} | {stats[name] if stats[name] is not None else 'null (no measurements)'} |"
-            for name in ("mean", "median", "min", "max")
-        ],
+        *[f"| {name} | {display_statistic(name)} |" for name in ("mean", "median", "min", "max")],
         "",
         "Failed = explicit null metric; missing = expected cases without a source row. "
         "A returned measurement does not establish task quality or correctness.",

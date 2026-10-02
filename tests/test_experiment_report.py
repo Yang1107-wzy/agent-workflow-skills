@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "skills/workflow-experiment-report/scripts/summarize_results.py"
@@ -83,6 +84,14 @@ class ExperimentReportTests(unittest.TestCase):
                 "median": 3.0,
                 "min": 2.0,
                 "max": 4.0,
+                "exact": {
+                    "mean": {"numerator": 3, "denominator": 1, "serialized_numeric_is_exact": True},
+                    "median": {
+                        "numerator": 3,
+                        "denominator": 1,
+                        "serialized_numeric_is_exact": True,
+                    },
+                },
                 "denominator": 2,
                 "population": "returned measurements only",
             },
@@ -106,6 +115,7 @@ class ExperimentReportTests(unittest.TestCase):
         self.assertEqual(report["coverage"]["fraction"], 0)
         for name in ["mean", "median", "min", "max"]:
             self.assertIsNone(report["statistics"][name])
+        self.assertEqual(report["statistics"]["exact"], {"mean": None, "median": None})
 
     def test_empty_source_means_all_expected_cases_are_missing(self):
         report = self.report("", expected=2)
@@ -127,7 +137,15 @@ class ExperimentReportTests(unittest.TestCase):
         self.assertEqual(report["counts"]["observed"], 1)
 
     def test_deep_invalid_input_returns_two_without_traceback(self):
-        self.assert_invalid("[" * 2000 + "0" + "]" * 2000)
+        self.assert_invalid("[" * 20000 + "0" + "]" * 20000)
+
+    def test_decoder_recursion_limit_is_an_input_error(self):
+        spec = importlib.util.spec_from_file_location("experiment_report_recursion", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with patch.object(module.json, "loads", side_effect=RecursionError("decoder limit")):
+            with self.assertRaisesRegex(ValueError, "line 1: JSON nesting exceeds decoder limit"):
+                module.summarize(b'{"id":"a","score":0}', "source.jsonl", "score", 1, "p", "v1")
 
     def test_missing_fields_bad_shapes_and_invalid_ids_are_rejected(self):
         rows = [
@@ -175,6 +193,55 @@ class ExperimentReportTests(unittest.TestCase):
         self.assertEqual(report["statistics"]["mean"], 9007199254740994)
         self.assertEqual(report["statistics"]["median"], 9007199254740994)
         self.assertIsInstance(report["statistics"]["mean"], int)
+
+    def test_large_nonintegral_aggregates_disclose_exact_rational_and_rounding(self):
+        raw = '{"id":"a","score":9007199254740993}\n{"id":"b","score":9007199254740994}\n'
+        report = self.report(raw, expected=2)
+        for name in ["mean", "median"]:
+            self.assertEqual(report["statistics"][name], 9007199254740994.0)
+            self.assertEqual(
+                report["statistics"]["exact"][name],
+                {
+                    "numerator": 18014398509481987,
+                    "denominator": 2,
+                    "serialized_numeric_is_exact": False,
+                },
+            )
+        result = self.run_report(raw, expected=2, output_format="markdown")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for name in ["mean", "median"]:
+            self.assertIn(
+                f"| {name} | 9007199254740994.0 (rounded approximation; exact 18014398509481987/2) |",
+                result.stdout,
+            )
+
+    def test_repeating_mean_stays_numeric_with_exact_metadata(self):
+        report = self.report('{"id":"a","score":1}\n{"id":"b","score":0}\n{"id":"c","score":0}\n')
+        self.assertEqual(report["statistics"]["mean"], 1 / 3)
+        self.assertIsInstance(report["statistics"]["mean"], float)
+        self.assertEqual(
+            report["statistics"]["exact"]["mean"],
+            {"numerator": 1, "denominator": 3, "serialized_numeric_is_exact": False},
+        )
+
+    def test_terminating_decimal_aggregate_serialization_is_exact(self):
+        report = self.report('{"id":"a","score":0}\n{"id":"b","score":2.4}\n', expected=2)
+        for name in ["mean", "median"]:
+            self.assertEqual(report["statistics"][name], 1.2)
+            self.assertEqual(
+                report["statistics"]["exact"][name],
+                {"numerator": 6, "denominator": 5, "serialized_numeric_is_exact": True},
+            )
+
+    def test_mixed_float_integer_extrema_use_decimal_rational_order(self):
+        rows = ['{"id":"a","score":1e23}', '{"id":"b","score":99999999999999999999999}']
+        for ordered in [rows, rows[::-1]]:
+            with self.subTest(order=ordered):
+                report = self.report("\n".join(ordered), expected=2)
+                self.assertEqual(report["statistics"]["min"], 99999999999999999999999)
+                self.assertIsInstance(report["statistics"]["min"], int)
+                self.assertEqual(report["statistics"]["max"], 1e23)
+                self.assertIsInstance(report["statistics"]["max"], float)
 
     def test_small_decimal_measurements_remain_nonzero(self):
         report = self.report('{"id":"a","score":5e-324}\n', expected=1)
