@@ -19,7 +19,7 @@ Objective: build a maintained, practical Codex / Claude Code skill library, publ
 - [x] Small-package release preparation with version/artifact/CI consistency.
 - [x] Bilingual professional editing with a factual preservation map.
 
-All ten named workflows are implemented with reviewed helpers and isolated task evaluations. Final integration requires bundle installation/smoke checks, exact-source CI and verified v0.2.0 publication.
+The named ten-workflow milestone is delivered in [v0.2.0](https://github.com/Yang1107-wzy/agent-workflow-skills/releases/tag/v0.2.0): reviewed helpers, inspected isolated task outcomes,20 installed helper examples, and [five successful exact-source CI jobs](https://github.com/Yang1107-wzy/agent-workflow-skills/actions/runs/37012675819). Remaining activity is future maintenance/new requests, not an unfinished named workflow.
 
 ## Each iteration
 

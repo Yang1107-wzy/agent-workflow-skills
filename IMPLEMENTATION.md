@@ -8,4 +8,4 @@
 - [x] Run lint, script tests, validator, release ZIP checks and GitHub CI; publish v0.1.0.
 - [x] Complete milestone2 one workflow at a time with per-task review and isolated forward evaluation.
 - [x] Verify final ten-skill package extraction, dual-target installation and twenty installed helper examples.
-- [ ] Verify exact-source cross-platform CI and v0.2.0 publication.
+- [x] Verify exact-source cross-platform CI and v0.2.0 publication (release commit6bfdca9; five jobs pass; ZIP/checksum remote digests match).
