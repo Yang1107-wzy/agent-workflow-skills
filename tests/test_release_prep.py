@@ -335,10 +335,105 @@ class ReleasePrepTests(unittest.TestCase):
         env = {**os.environ, "LC_ALL": "C", "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0"}
         data = self.data(self.cli("--artifact", "dist/资料.txt", env=env))
         self.assertEqual(data["artifacts"][1]["path"], "dist/资料.txt")
-        result = self.cli("--format", "markdown")
+        result = self.cli("--artifact", "dist/资料.txt", "--format", "markdown", env=env)
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("dist/资料.txt", result.stdout)
         self.assertIn("not run", result.stdout)
         self.assertIn(data["artifacts"][0]["sha256"], result.stdout)
+
+    def surrogate_argv_cli(self, relative_bytes, output_format):
+        # Reproduce Linux ASCII-locale argv even on POSIX systems with UTF-8 filesystems.
+        wrapper = (
+            "import runpy,sys; script,root,relative,output_format=sys.argv[1:]; "
+            "relative=bytes.fromhex(relative).decode('ascii','surrogateescape'); "
+            "sys.argv=[script,root,'--version','1.2.3','--artifact',relative,"
+            "'--format',output_format]; runpy.run_path(script,run_name='__main__')"
+        )
+        return subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                wrapper,
+                str(SCRIPT),
+                str(self.root),
+                relative_bytes.hex(),
+                output_format,
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+
+    @unittest.skipUnless(os.name == "posix", "surrogateescape paths require POSIX")
+    def test_surrogateescaped_utf8_argv_reports_real_path_and_hash_without_mutation(self):
+        relative = "dist/资料.txt"
+        self.write(relative, "Synthetic UTF-8 artifact\n")
+        before = {
+            p.relative_to(self.root): p.read_bytes() for p in self.root.rglob("*") if p.is_file()
+        }
+        digest = hashlib.sha256(before[Path(relative)]).hexdigest()
+        for output_format in ("json", "markdown"):
+            with self.subTest(output_format=output_format):
+                result = self.surrogate_argv_cli(relative.encode("utf-8"), output_format)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(relative, result.stdout)
+                self.assertIn(digest, result.stdout)
+                if output_format == "json":
+                    row = self.data(result)["artifacts"][0]
+                    self.assertEqual(row["path"], relative)
+                    self.assertEqual(row["bytes"], len(before[Path(relative)]))
+                    self.assertEqual(row["sha256"], digest)
+        after = {
+            p.relative_to(self.root): p.read_bytes() for p in self.root.rglob("*") if p.is_file()
+        }
+        self.assertEqual(after, before)
+
+    @unittest.skipUnless(os.name == "posix", "surrogateescape paths require POSIX")
+    def test_surrogateescaped_missing_path_issues_recover_unicode_and_escape_invalid_bytes(self):
+        for relative_bytes, displayed in (
+            ("dist/不存在.txt".encode("utf-8"), "dist/不存在.txt"),
+            (b"dist/invalid-\xff.txt", r"dist/invalid-\xff.txt"),
+        ):
+            for output_format in ("json", "markdown"):
+                with self.subTest(relative_bytes=relative_bytes, output_format=output_format):
+                    result = self.surrogate_argv_cli(relative_bytes, output_format)
+                    self.assertEqual(result.returncode, 1, result.stderr)
+                    if output_format == "json":
+                        self.assertEqual(
+                            self.data(result, 1)["issues"], [f"missing artifact: {displayed}"]
+                        )
+                    else:
+                        self.assertIn(f"missing artifact: {displayed}", result.stdout)
+                    self.assertNotIn("\ufffd", result.stdout)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "macOS rejects invalid UTF-8 filenames")
+    def test_invalid_byte_artifact_reports_visible_escape_and_exact_hash(self):
+        relative_bytes = b"dist/invalid-\xff.txt"
+        content = b"Synthetic raw-byte filename artifact\n"
+        with open(os.fsencode(self.root) + b"/" + relative_bytes, "wb") as stream:
+            stream.write(content)
+        for output_format in ("json", "markdown"):
+            with self.subTest(output_format=output_format):
+                result = self.surrogate_argv_cli(relative_bytes, output_format)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                digest = hashlib.sha256(content).hexdigest()
+                if output_format == "json":
+                    self.assertEqual(
+                        self.data(result)["artifacts"],
+                        [
+                            {
+                                "path": r"dist/invalid-\xff.txt",
+                                "bytes": len(content),
+                                "sha256": digest,
+                            }
+                        ],
+                    )
+                else:
+                    self.assertIn(r"dist/invalid-\xff.txt", result.stdout)
+                    self.assertIn(digest, result.stdout)
+                self.assertNotIn("\ufffd", result.stdout)
+        with open(os.fsencode(self.root) + b"/" + relative_bytes, "rb") as stream:
+            self.assertEqual(stream.read(), content)
 
     def test_missing_root_and_invalid_usage(self):
         self.assertEqual(self.cli(root=self.root / "absent").returncode, 2)

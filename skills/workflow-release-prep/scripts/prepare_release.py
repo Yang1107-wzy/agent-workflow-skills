@@ -178,39 +178,50 @@ def manifests(root, requested, issues):
     return rows
 
 
+def display_path(value):
+    """Recover surrogateescaped UTF-8 bytes; visibly escape undecodable name bytes.
+
+    This is report text only. Filesystem operations must retain the original path.
+    """
+    return value.encode("utf-8", errors="surrogateescape").decode(
+        "utf-8", errors="backslashreplace"
+    )
+
+
 def artifact(root, relative, issues):
     path = Path(relative)
+    displayed = display_path(relative)
     if (
         not relative
         or path.is_absolute()
         or ".." in path.parts
         or any(char in relative for char in ("\n", "\r", "\x00", "\\"))
     ):
-        issues.append(f"artifact path must be contained and relative: {relative!r}")
+        issues.append(f"artifact path must be contained and relative: {displayed!r}")
         return None
     candidate = root
     for part in path.parts:
         candidate = candidate / part
         if candidate.is_symlink():
-            issues.append(f"symlink artifact or ancestor: {relative}")
+            issues.append(f"symlink artifact or ancestor: {displayed}")
             return None
     try:
         metadata = candidate.stat()
     except FileNotFoundError:
-        issues.append(f"missing artifact: {relative}")
+        issues.append(f"missing artifact: {displayed}")
         return None
     if not candidate.resolve().is_relative_to(root) or not stat.S_ISREG(metadata.st_mode):
-        issues.append(f"artifact must be a contained ordinary file: {relative}")
+        issues.append(f"artifact must be a contained ordinary file: {displayed}")
         return None
     if not metadata.st_size:
-        issues.append(f"empty artifact: {relative}")
+        issues.append(f"empty artifact: {displayed}")
         return None
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
     descriptor = os.open(candidate, flags)
     with os.fdopen(descriptor, "rb") as stream:
         before = os.fstat(stream.fileno())
         if not stat.S_ISREG(before.st_mode):
-            raise ValueError(f"artifact changed type while reading: {relative}")
+            raise ValueError(f"artifact changed type while reading: {displayed}")
         digest = hashlib.sha256()
         size = 0
         for block in iter(lambda: stream.read(65536), b""):
@@ -223,9 +234,9 @@ def artifact(root, relative, issues):
         != (after.st_ino, after.st_size, after.st_mtime_ns)
         or size != after.st_size
     ):
-        issues.append(f"artifact changed during hashing: {relative}")
+        issues.append(f"artifact changed during hashing: {displayed}")
         return None
-    return {"path": path.as_posix(), "bytes": size, "sha256": digest.hexdigest()}
+    return {"path": display_path(path.as_posix()), "bytes": size, "sha256": digest.hexdigest()}
 
 
 def git_state(root, issues):
