@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "source": {
+    "path": "examples/experiment-report/results.jsonl",
+    "sha256": "02c8a2a532cf614b9c80e3eeac5a4c893b7d455b303624a1675349b48631b5a8"
+  },
+  "metric": "offset_points",
+  "unit": "points",
+  "protocol": "cobalt-offset-v1",
+  "counts": {
+    "observed": 4,
+    "expected": 5,
+    "returned": 3,
+    "failed": 1,
+    "missing": 1
+  },
+  "coverage": {
+    "numerator": 3,
+    "denominator": 5,
+    "fraction": 0.6
+  },
+  "statistics": {
+    "mean": 0.5,
+    "median": 0,
+    "min": -1,
+    "max": 2.5,
+    "denominator": 3,
+    "population": "returned measurements only"
+  },
+  "numeric_precision": "Integer inputs and integral aggregates are exact. Decimal float inputs must round-trip to the same decimal value. Nonintegral aggregates are rounded to binary64; nonfinite output and nonzero-to-zero underflow are rejected."
+}
