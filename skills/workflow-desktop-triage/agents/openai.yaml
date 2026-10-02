@@ -1,0 +1,4 @@
+interface:
+  display_name: "Desktop Triage"
+  short_description: "Classify scattered files with a verified path ledger"
+  default_prompt: "Use $workflow-desktop-triage to organize this selected file inbox."

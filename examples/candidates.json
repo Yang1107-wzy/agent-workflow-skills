@@ -1,0 +1,52 @@
+{
+  "candidates": [
+    {
+      "name": "experiment-report",
+      "utility": 5,
+      "portability": 5,
+      "evidence": 4,
+      "complexity": 3,
+      "maintenance": 2,
+      "overlaps_existing": false,
+      "sources": [
+        {
+          "url": "https://github.com/openai/skills",
+          "access": "fetched",
+          "checked_on": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "name": "meeting-actions",
+      "utility": 4,
+      "portability": 5,
+      "evidence": 3,
+      "complexity": 2,
+      "maintenance": 2,
+      "overlaps_existing": false,
+      "sources": [
+        {
+          "url": "https://github.com/openai/skills",
+          "access": "fetched",
+          "checked_on": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "name": "docs-sync",
+      "utility": 4,
+      "portability": 4,
+      "evidence": 4,
+      "complexity": 3,
+      "maintenance": 3,
+      "overlaps_existing": false,
+      "sources": [
+        {
+          "url": "https://github.com/openai/skills",
+          "access": "fetched",
+          "checked_on": "2026-10-02"
+        }
+      ]
+    }
+  ]
+}

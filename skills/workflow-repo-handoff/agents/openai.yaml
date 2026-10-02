@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repository Handoff"
+  short_description: "Establish branch state and reproducible verification"
+  default_prompt: "Use $workflow-repo-handoff to prepare a handoff for this repository."

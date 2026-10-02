@@ -1,0 +1,16 @@
+{
+  "claims": [
+    {
+      "id": "run-coverage",
+      "claim": "The brief reports 28 returned results from 30 offline cases.",
+      "status": "provided",
+      "evidence": [{"source": "writing-brief.md", "locator": "First run bullet", "observation": "30 cases, 28 returns, offline replay.", "observed": true}]
+    },
+    {
+      "id": "deployment",
+      "claim": "Production deployment is not established.",
+      "status": "unverified",
+      "evidence": []
+    }
+  ]
+}

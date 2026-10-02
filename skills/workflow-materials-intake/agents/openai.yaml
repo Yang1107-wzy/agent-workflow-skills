@@ -1,0 +1,4 @@
+interface:
+  display_name: "Materials Intake"
+  short_description: "Inventory materials and reconcile version evidence"
+  default_prompt: "Use $workflow-materials-intake to index this folder and identify duplicate files."

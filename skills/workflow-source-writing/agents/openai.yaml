@@ -1,0 +1,4 @@
+interface:
+  display_name: "Source-backed Writing"
+  short_description: "Draft professional prose with a traceable claim ledger"
+  default_prompt: "Use $workflow-source-writing to turn these sources into a reviewable technical draft."

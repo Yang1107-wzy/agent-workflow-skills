@@ -1,0 +1,4 @@
+interface:
+  display_name: "Practical Skill Research"
+  short_description: "Select useful skills from dated GitHub and X evidence"
+  default_prompt: "Use $workflow-skill-research to select the next useful Agent workflow to build."
