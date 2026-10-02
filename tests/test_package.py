@@ -22,7 +22,9 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             with zipfile.ZipFile(target) as z:
                 names = z.namelist()
-                self.assertEqual(sum(n.endswith("/SKILL.md") for n in names), 5)
+                expected = {p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md")}
+                included = {Path(n).parent.name for n in names if n.endswith("/SKILL.md")}
+                self.assertEqual(included, expected)
                 self.assertFalse(
                     any(
                         "__pycache__" in n or "forward-evals" in n or "/baseline/" in n

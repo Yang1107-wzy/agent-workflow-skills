@@ -8,3 +8,5 @@ research/forward-evals/
 *.log
 
 .worktrees/
+
+.agent-evidence/
